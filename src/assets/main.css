@@ -1,5 +1,5 @@
 /* Declare common fonts, common colors, and common CSS variables. */
-@import './base.css';
+@import "./base.css";
 
 .layout {
   display: flex;
@@ -18,3 +18,45 @@ main {
   padding: 20px;
 }
 
+/* ================================ Button Styles ================================ */
+.p-button.action-btn {
+  min-width: 130px;
+  height: 38px;
+  font-size: 18px;
+}
+
+.p-button.primary-btn {
+  background: #2f73c9 !important;
+  border: none !important;
+}
+
+.p-button.primary-btn:hover {
+  background: #2f73c9 !important;
+  border: none !important;
+  opacity: 0.9;
+}
+
+.p-button.secondary-btn {
+  background: #7a838d !important;
+  border: none !important;
+}
+
+.p-button.secondary-btn:hover {
+  background: #7a838d !important;
+  border: none !important;
+  opacity: 0.9;
+}
+
+/* ================================ Button Styles ================================ */
+
+/* ================================ Dialog Styles ================================ */
+.p-dialog .p-dialog-header {
+  border-bottom: 1px solid #dee2e6;
+  height: 70px;
+}
+.p-dialog .p-dialog-title {
+  font-weight: 400 !important;
+  color: #000;
+}
+
+/* ================================ Dialog Styles ================================ */

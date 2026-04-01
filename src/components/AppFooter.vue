@@ -1,31 +1,19 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-type FooterButton = {
+export type FooterButton = {
   key: number;
   text: string;
 };
 
 const props = defineProps<{
   enabledKeys?: number[];
+  buttons: FooterButton[];
 }>();
 
 const emit = defineEmits<{
   (e: "keyClick", key: number): void;
 }>();
-
-const footerButtons: FooterButton[] = [
-  { key: 1, text: "" },
-  { key: 2, text: "印刷" },
-  { key: 3, text: "" },
-  { key: 4, text: "出力設定" },
-  { key: 5, text: "" },
-  { key: 6, text: "" },
-  { key: 7, text: "" },
-  { key: 8, text: "処理月選択" },
-  { key: 9, text: "" },
-  { key: 10, text: "" },
-];
 
 const enabledKeySet = computed(() => new Set(props.enabledKeys ?? []));
 
@@ -37,7 +25,7 @@ function onFooterButtonClicked(key: number) {
 
 <template>
   <div class="footer-buttons">
-    <div v-for="btn in footerButtons" :key="btn.key" class="f-item">
+    <div v-for="btn in buttons" :key="btn.key" class="f-item">
       <button
         class="btn-f"
         :disabled="!enabledKeySet.has(btn.key)"
@@ -102,7 +90,6 @@ function onFooterButtonClicked(key: number) {
   white-space: nowrap;
 }
 
-/* RESPONSIVE  */
 @media (max-width: 1024px) {
   .footer-buttons {
     gap: 12px;

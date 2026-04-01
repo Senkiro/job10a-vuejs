@@ -2,6 +2,7 @@ import CompanyChange from "@/views/CompanyChange.vue";
 import HomeView from "@/views/HomeView.vue";
 import Job10a from "@/views/job10a/Job10a.vue";
 import Job30 from "@/views/job30/Job30.vue";
+import Job60 from "@/views/job60/Job60.vue";
 import { createRouter, createWebHistory } from "vue-router";
 
 const router = createRouter({
@@ -26,6 +27,11 @@ const router = createRouter({
       path: "/job30",
       name: "job30",
       component: Job30,
+    },
+    {
+      path: "/job60",
+      name: "job60",
+      component: Job60,
     },
   ],
 });

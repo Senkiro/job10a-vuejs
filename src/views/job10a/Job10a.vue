@@ -2,29 +2,32 @@
 import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
-import BaseDialog from "@/components/BaseDialog.vue";
+import { footerJob10a } from "@/constants/footerButtonsConfigs";
+import { headerMenusJob10a } from "@/constants/headerConfigs";
 import { ref } from "vue";
+import PrintRangeDialog from "@/components/dialogs/job10a/PrintRangeDialog.vue";
+import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
+
+const showPrintRangeDialog = ref(false);
+const showOutputSettingsDialog = ref(false);
+const showMonthSelectDialog = ref(false);
 
 function handleFooterKeyClick(key: number) {
-  console.log("Đã bấm phím:", key);
-
   switch (key) {
     case 2:
-      console.log("In");
+      showPrintRangeDialog.value = true;
       break;
     case 4:
-      console.log("Output settings");
+      showOutputSettingsDialog.value = true;
       break;
     case 8:
-      console.log("Chọn tháng xử lý");
+      showMonthSelectDialog.value = true;
       break;
   }
 }
 
-const showDialog = ref(false);
-
-function openDialog() {
-  showDialog.value = true;
+function handlePrintRange() {
+  console.log("Thực hiện in");
 }
 </script>
 
@@ -33,29 +36,35 @@ function openDialog() {
     <AppSidebar />
 
     <div class="content-area">
-      <AppHeader />
+      <AppHeader
+        user-name="User 0001"
+        title="科目履歴一覧"
+        period-text="当期：自 2026年 1月 1日 至 2026年12月31日"
+        screen-code="KNMRI-1"
+        :menus="headerMenusJob10a"
+        :show-help="true"
+        :show-shortcut="true"
+      />
 
       <main>
         <h1>job10a</h1>
       </main>
-      <button @click="openDialog">Mở dialog</button>
 
-      <BaseDialog
-        v-model:visible="showDialog"
-        title="Xác nhận thao tác"
-        width="40rem"
-      >
-        <p>Bạn có chắc chắn muốn thực hiện thao tác này không?</p>
+      <PrintRangeDialog
+        v-model:visible="showPrintRangeDialog"
+        @confirm="handlePrintRange"
+      />
 
-        <template #footer>
-          <div style="display: flex; gap: 8px; justify-content: end">
-            <button @click="showDialog = false">Hủy</button>
-            <button @click="showDialog = false">Xác nhận</button>
-          </div>
-        </template>
-      </BaseDialog>
+      <OutputSettingsDialog
+        v-model:visible="showOutputSettingsDialog"
+        @confirm="handlePrintRange"
+      />
 
-      <AppFooter :enabled-keys="[2, 4, 8]" @keyClick="handleFooterKeyClick" />
+      <AppFooter
+        :buttons="footerJob10a"
+        :enabled-keys="[2, 4, 8]"
+        @key-click="handleFooterKeyClick"
+      />
     </div>
   </div>
 </template>

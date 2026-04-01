@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import logoSias from "@/assets/images/logo-sias.png";
 
@@ -39,7 +38,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const companyCode = computed(() => props.companyCode ?? "5000");
+const companyCode = sessionStorage.getItem("companyId") ?? "Change Comapny";
 
 const isActive = (path: string) => route.path === path;
 

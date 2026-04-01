@@ -1,57 +1,72 @@
 <script setup lang="ts">
-import { RouterLink } from "vue-router";
+export type HeaderMenuChild = {
+  label: string;
+  disabled?: boolean;
+  separatorAfter?: boolean;
+};
+
+export type HeaderMenuItem = {
+  label: string;
+  children?: HeaderMenuChild[];
+};
+
+const props = defineProps<{
+  userName: string;
+  title: string;
+  periodText: string;
+  screenCode: string;
+  menus?: HeaderMenuItem[];
+  showHelp?: boolean;
+  showShortcut?: boolean;
+}>();
 </script>
 
 <template>
   <header class="header-bar">
     <div class="top-row px-4">
-      <a
-        >User 0001<span style="margin-left: 5px"
-          ><i class="bi bi-person-circle"></i></span
-      ></a>
+      <a>
+        {{ userName }}
+        <span style="margin-left: 5px">
+          <i class="bi bi-person-circle"></i>
+        </span>
+      </a>
     </div>
 
     <div class="header-top">
-      <span style="font-weight: bold">科目履歴一覧</span>
-      <span>当期：自 2026年 1月 1日 至 2026年12月31日</span>
-      <span class="code">KNMRI-1</span>
+      <span style="font-weight: bold">{{ title }}</span>
+      <span>{{ periodText }}</span>
+      <span class="code">{{ screenCode }}</span>
     </div>
+
     <div class="header-bot">
       <div class="sub-function">
-        <div class="menu-item">
-          ファイル(F)
-          <ul class="submenu">
-            <li>印刷(P)...F2</li>
-          </ul>
-        </div>
-        <div class="menu-item">
-          オプション(O)
-          <ul class="submenu">
-            <li>出力設定(O)...F4</li>
-          </ul>
-        </div>
-        <div class="menu-item">
-          処理月変更(R)
-          <ul class="submenu">
-            <li>処理期選択(S)...F8</li>
-          </ul>
-        </div>
-        <div class="menu-item">
-          バージョン(A)
-          <ul class="submenu">
-            <li>バージョン情報(A)...</li>
+        <div v-for="menu in menus ?? []" :key="menu.label" class="menu-item">
+          {{ menu.label }}
+
+          <ul v-if="menu.children?.length" class="submenu">
+            <li
+              v-for="child in menu.children"
+              :key="child.label"
+              :class="{
+                'disabled-item': child.disabled,
+                'separator-after': child.separatorAfter,
+              }"
+            >
+              {{ child.label }}
+            </li>
           </ul>
         </div>
       </div>
 
-      <div class="right-tools">
+      <div v-if="showHelp" class="right-tools">
         <div class="help">
           <i class="bi bi-question-circle-fill"></i>
           <span>ヘルプ(H)</span>
         </div>
       </div>
     </div>
-    <div class="shortcut">
+
+    <div v-if="showShortcut" class="shortcut">
       <div class="shortcut-button">
         <i class="bi bi-caret-right-fill"></i>
         <span>ショートカットキー</span>
@@ -98,11 +113,15 @@ import { RouterLink } from "vue-router";
 .sub-function {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
 .menu-item {
+  position: relative;
+  cursor: pointer;
+  padding: 4px 8px;
+  user-select: none;
   color: black;
-  padding: 0 10px;
   font-size: 14px;
   line-height: 20px;
   border-left: 1px solid #eeeeee;
@@ -142,18 +161,6 @@ import { RouterLink } from "vue-router";
   margin-left: 20px;
 }
 
-.sub-function {
-  display: flex;
-  gap: 16px;
-}
-
-.menu-item {
-  position: relative;
-  cursor: pointer;
-  padding: 4px 8px;
-  user-select: none;
-}
-
 .submenu {
   position: absolute;
   top: 100%;
@@ -169,6 +176,21 @@ import { RouterLink } from "vue-router";
   z-index: 1000;
 }
 
+.submenu li {
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.submenu li:hover {
+  background: #dbe9ff;
+}
+
+.separator-after {
+  border-bottom: 1px solid #cfcfcf;
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+}
+
 .menu-item:hover .submenu {
   display: block;
 }
@@ -182,14 +204,6 @@ import { RouterLink } from "vue-router";
   background: #dbe9ff;
 }
 
-.submenu .divider {
-  height: 1px;
-  margin: 4px 0;
-  background: #ccc;
-  padding: 0;
-}
-
-/* disabled */
 .disabled-item {
   color: #aaa;
   pointer-events: none;

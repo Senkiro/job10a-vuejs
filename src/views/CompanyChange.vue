@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useRouter, RouterLink } from "vue-router";
+import { login } from "@/services/authService";
+import { getNames } from "@/services/job10aService";
+import { useToast } from "primevue/usetoast";
+
+import Toast from "primevue/toast";
+import Select from "primevue/select";
 
 type CompanyOption = {
   label: string;
   value: string;
 };
 
+const router = useRouter();
+
 const companyId = ref("");
 const selectedCompany = ref("");
+const isLoading = ref(false);
 
 const companies = ref<CompanyOption[]>([
   { label: "-- 会社を選択します -- ", value: "" },
@@ -20,6 +30,10 @@ const companies = ref<CompanyOption[]>([
   { label: "5006 自2026年1月1日～2026年12月31日", value: "5006" },
   { label: "5007 自2026年1月1日～2026年12月31日", value: "5007" },
 ]);
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function handleAdd() {
   if (!companyId.value.trim()) return;
@@ -38,12 +52,65 @@ function handleAdd() {
   companyId.value = "";
 }
 
-function handleOk() {
-  console.log("Selected company:", selectedCompany.value);
+async function handleOk() {
+  if (!selectedCompany.value.trim()) {
+    toast.add({
+      severity: "warn",
+      summary: "警告",
+      detail: "会社を選択してください。",
+      life: 3000,
+    });
+    return;
+  }
+
+  const payload = {
+    userCode: "01",
+    password: "ICS",
+    companyId: selectedCompany.value.trim(),
+  };
+
+  const payload2 = {
+    kesn: 13,
+    kicd: "000000000001001",
+  };
+
+  try {
+    isLoading.value = true;
+
+    const response = await login(payload);
+
+    console.log("Login success:", response.data);
+
+    sessionStorage.setItem("companyId", response.data?.data?.companyId);
+
+    toast.add({
+      severity: "success",
+      summary: "通知",
+      detail: "ログインに成功しました!",
+      life: 3000,
+    });
+
+    const response2 = await getNames(payload2);
+    console.log(response2);
+    await sleep(3000);
+    router.push("/");
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "エラー",
+      detail: "ログインに失敗しました!",
+      life: 3000,
+    });
+  } finally {
+    isLoading.value = false;
+  }
 }
+
+const toast = useToast();
 </script>
 
 <template>
+  <Toast />
   <div class="page-bg">
     <div class="bg-shape bg-shape-top"></div>
     <div class="bg-shape bg-shape-right"></div>
@@ -69,21 +136,27 @@ function handleOk() {
       <div class="form-group">
         <label class="form-label">会社一覧</label>
         <div class="select-wrap">
-          <select v-model="selectedCompany" class="select-input">
-            <option
-              v-for="company in companies"
-              :key="company.value"
-              :value="company.value"
-              class="company-option"
-            >
-              {{ company.label }}
-            </option>
-          </select>
+          <Select
+            v-model="selectedCompany"
+            :options="companies"
+            filter
+            optionLabel="label"
+            optionValue="value"
+            placeholder="-- 会社を選択してください --"
+            class="select-input"
+          />
         </div>
       </div>
 
       <div class="action-row">
-        <button class="primary-btn" type="button" @click="handleOk">OK</button>
+        <button
+          class="primary-btn"
+          type="button"
+          @click="handleOk"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? "Loading..." : "OK" }}
+        </button>
 
         <RouterLink to="/" class="secondary-btn">
           <span>キャンセル</span>
