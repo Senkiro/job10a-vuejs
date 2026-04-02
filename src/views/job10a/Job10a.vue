@@ -5,7 +5,7 @@ import AppSidebar from "@/components/AppSidebar.vue";
 import { footerJob10a } from "@/constants/footerButtonsConfigs";
 import { headerMenusJob10a } from "@/constants/headerConfigs";
 import { ref } from "vue";
-import PrintRangeDialog from "@/components/dialogs/job10a/PrintRangeDialog.vue";
+import PrintRangeDialog from "@/components/dialogs/job10a/print-range/PrintRangeDialog.vue";
 import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
 
 const showPrintRangeDialog = ref(false);

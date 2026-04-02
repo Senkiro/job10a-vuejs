@@ -55,8 +55,8 @@ const {
     @update:visible="emit('update:visible', $event)"
   >
     <div class="dialog-body">
-      <div class="f4-section">
-        <div class="f4-header-row">
+      <div class="section">
+        <div class="header-row">
           <div
             :class="
               activeTitle === 'EditMode' ? 'title-active' : 'title-inactive'
@@ -66,7 +66,7 @@ const {
           </div>
         </div>
 
-        <div class="f4-radio-group">
+        <div class="radio-group">
           <label
             :class="
               selectedChildItem === '全履歴を出力' ? 'selected-child-item' : ''
@@ -101,7 +101,7 @@ const {
         </div>
       </div>
 
-      <div class="f4-section">
+      <div class="section">
         <div
           :class="activeTitle === 'Date' ? 'title-active' : 'title-inactive'"
         >
@@ -109,8 +109,8 @@ const {
         </div>
       </div>
 
-      <div class="f4-grid-container" :class="{ 'grid-disabled': isAllMode }">
-        <table class="f4-grid">
+      <div class="grid-container" :class="{ 'grid-disabled': isAllMode }">
+        <table class="grid">
           <thead>
             <tr>
               <th style="width: 20px"></th>
@@ -140,13 +140,13 @@ const {
         </table>
       </div>
 
-      <div class="f4-section">
-        <div class="f4-input-date">
-          <div class="f4-section-title-input">
+      <div class="section">
+        <div class="input-date">
+          <div class="section-title-input">
             <input
               v-model="dateText"
               type="text"
-              class="f4-input-inside"
+              class="input-inside"
               :disabled="isAllMode"
               inputmode="numeric"
               maxlength="10"
@@ -155,11 +155,11 @@ const {
             />
           </div>
 
-          <div class="f4-section-title-input">
+          <div class="section-title-input">
             <input
               v-model="timeText"
               type="text"
-              class="f4-input-inside"
+              class="input-inside"
               :disabled="isAllMode"
               inputmode="numeric"
               maxlength="8"
@@ -177,7 +177,7 @@ const {
       </div>
 
       <div
-        class="f4-radio-group checkbox-area"
+        class="radio-group checkbox-area"
         :class="{ 'checkbox-disabled': isAllMode }"
       >
         <label

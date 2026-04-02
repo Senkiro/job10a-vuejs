@@ -37,7 +37,7 @@
   border-top: none;
 }
 
-.f4-header-row {
+.header-row {
   position: relative;
   display: flex;
   justify-content: space-between;
@@ -74,7 +74,7 @@
   box-sizing: border-box;
 }
 
-.f4-input-date {
+.input-date {
   margin-top: 15px;
   display: flex;
   gap: 15px;
@@ -82,21 +82,21 @@
   margin-bottom: 15px;
 }
 
-.f4-radio-group {
+.radio-group {
   margin-left: 40px;
   padding: 8px 12px;
   font-size: 16px;
 }
 
-.f4-radio-group label {
+.radio-group label {
   cursor: pointer;
 }
 
-.f4-radio-group input {
+.radio-group input {
   margin-right: 6px;
 }
 
-.f4-grid-container {
+.grid-container {
   margin-top: 10px;
   margin-left: 50px;
   border: 1px solid #d1d3d5;
@@ -110,7 +110,7 @@
   flex-shrink: 0;
 }
 
-.f4-grid {
+.grid {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
@@ -119,14 +119,14 @@
   table-layout: fixed;
 }
 
-.f4-grid th {
+.grid th {
   text-align: center;
   padding: 10px 8px;
   background: #f6f8fb;
   white-space: nowrap;
 }
 
-.f4-grid td {
+.grid td {
   padding: 8px 10px;
   border-bottom: 1px solid #9fb0c6;
   border-right: 1px solid #b8c6d8;
@@ -137,11 +137,11 @@
   white-space: nowrap;
 }
 
-.f4-grid tbody tr:nth-child(odd) {
+.grid tbody tr:nth-child(odd) {
   background: #e5f3ff;
 }
 
-.f4-grid thead th {
+.grid thead th {
   position: sticky;
   top: 0;
   z-index: 25;
@@ -170,7 +170,7 @@
   pointer-events: none;
 }
 
-.f4-section-title-input {
+.section-title-input {
   color: #333;
   padding: 0;
   font-size: 14px;
@@ -181,7 +181,7 @@
   justify-content: center;
 }
 
-.f4-input-inside {
+.input-inside {
   width: 120px;
   height: 26px;
   border: none;
@@ -190,18 +190,18 @@
   background-color: #ffffff;
 }
 
-.f4-input-inside:focus {
+.input-inside:focus {
   background: #fffde7;
   border-color: #f9a825;
   outline: none;
 }
 
-.f4-input-inside:disabled {
+.input-inside:disabled {
   color: #666;
   background: #badffc;
 }
 
-.f4-button-bar {
+.button-bar {
   display: flex;
   justify-content: center;
   margin-top: 20px;
@@ -209,7 +209,7 @@
   gap: 30px;
 }
 
-.f4-action-btn {
+.action-btn {
   min-width: 140px;
   height: 38px;
   border: 1px solid #9da7b3;
@@ -220,7 +220,7 @@
   border-radius: 2px;
 }
 
-.f4-action-btn:hover {
+.action-btn:hover {
   background: #e2e2e2;
 }
 

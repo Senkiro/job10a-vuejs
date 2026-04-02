@@ -82,6 +82,7 @@ export function useHistoryOutputDialog(props: any, emit: any) {
       model.value.add = false;
       model.value.upd = false;
       model.value.del = false;
+      selectedRowIndex.value = null;
     }
   }
 
