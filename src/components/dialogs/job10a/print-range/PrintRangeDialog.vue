@@ -6,6 +6,7 @@ import { ref, watch } from "vue";
 import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter.vue";
 import SeqSearchDialog from "@/components/dialogs/job10a/seq-search/SeqSearchDialog.vue";
 import PrintSettingsDialog from "../print-settings/PrintSettingsDialog.vue";
+import { openPdfAndPrintFromBase64 } from "@/utils/printPdf";
 
 const props = defineProps<{
   visible: boolean;
@@ -72,13 +73,33 @@ function handleSubmit(row: any) {
 
 const showPrintSettingsDialog = ref(false);
 
-function handlePrintSettingsConfirm(payload: any) {
-  console.log("print settings:", payload);
+async function handlePrintSettingsConfirm(printSettings: any) {
+  console.log("print settings:", printSettings);
 
-  emit("confirm", {
+  const payload = {
     from: fromValue.value,
     to: toValue.value,
-  });
+    printSettings,
+  };
+
+  try {
+    // call api
+    const base64Pdf = "";
+
+    if (!base64Pdf) {
+      console.error("Không có dữ liệu PDF để in");
+      return;
+    }
+
+    openPdfAndPrintFromBase64(base64Pdf);
+
+    emit("confirm", {
+      from: fromValue.value,
+      to: toValue.value,
+    });
+  } catch (error) {
+    console.error("Lỗi khi in PDF:", error);
+  }
 }
 </script>
 
@@ -90,22 +111,23 @@ function handlePrintSettingsConfirm(payload: any) {
     :closable="true"
     :draggable="false"
     :style="{ width: '820px' }"
-    v-focustrap
     position="top"
     @update:visible="emit('update:visible', $event)"
   >
-    <div class="dialog-body">
-      <div class="form-row">
-        <div class="field-label">科目</div>
+    <div v-focustrap>
+      <div class="dialog-body">
+        <div class="form-row">
+          <div class="field-label">科目</div>
 
-        <div class="range-area">
-          <InputText v-model="fromValue" class="range-input" autofocus />
-          <span class="range-separator">～</span>
-          <InputText v-model="toValue" class="range-input" />
+          <div class="range-area">
+            <InputText v-model="fromValue" class="range-input" autofocus />
+            <span class="range-separator">～</span>
+            <InputText v-model="toValue" class="range-input" />
+          </div>
         </div>
-      </div>
 
-      <div class="hint-text">(科目は内部コードで指定します)</div>
+        <div class="hint-text">(科目は内部コードで指定します)</div>
+      </div>
     </div>
 
     <template #footer>

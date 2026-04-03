@@ -537,7 +537,6 @@ onMounted(() => {
     :closable="true"
     :draggable="false"
     :style="{ width: '900px' }"
-    v-focustrap
     position="top"
     @update:visible="(val) => emit('update:visible', val)"
   >

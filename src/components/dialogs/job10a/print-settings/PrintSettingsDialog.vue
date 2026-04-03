@@ -133,294 +133,303 @@ const hintText = computed(() => {
     :closable="true"
     :draggable="false"
     :style="{ width: '820px' }"
-    v-focustrap
     position="top"
     @update:visible="emit('update:visible', $event)"
   >
     <div class="print-group">
       <div class="print-group-title">印刷項目</div>
 
-      <table class="print-table">
-        <tr>
-          <td
-            :class="activeTitle === 'Title' ? 'title-active' : 'title-inactive'"
-          >
-            会社タイトル
-          </td>
-          <td>
-            <label>
+      <table class="print-table" autofocus>
+        <tbody>
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Title' ? 'title-active' : 'title-inactive'
+              "
+            >
+              会社タイトル
+            </td>
+            <td>
+              <label>
+                <input
+                  type="radio"
+                  name="title"
+                  :checked="outputTitle"
+                  @change="
+                    () => {
+                      outputTitle = true;
+                      setActive('Title');
+                    }
+                  "
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="title"
+                  :checked="!outputTitle"
+                  @change="
+                    () => {
+                      outputTitle = false;
+                      setActive('Title');
+                    }
+                  "
+                />
+                出力しない
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Code' ? 'title-active' : 'title-inactive'
+              "
+            >
+              会社コード
+            </td>
+            <td>
+              <label>
+                <input
+                  type="radio"
+                  name="code"
+                  :checked="outputCode"
+                  @change="
+                    () => {
+                      outputCode = true;
+                      setActive('Code');
+                    }
+                  "
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="code"
+                  :checked="!outputCode"
+                  @change="
+                    () => {
+                      outputCode = false;
+                      setActive('Code');
+                    }
+                  "
+                />
+                出力しない
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'CreatedDate'
+                  ? 'title-active'
+                  : 'title-inactive'
+              "
+            >
+              作成日
+            </td>
+            <td class="date-row">
+              <label>
+                <input
+                  type="radio"
+                  name="date"
+                  :checked="outputDate"
+                  @change="
+                    () => {
+                      outputDate = true;
+                      setActive('CreatedDate');
+                    }
+                  "
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="date"
+                  :checked="!outputDate"
+                  @change="
+                    () => {
+                      outputDate = false;
+                      outputTime = false;
+                      setActive('CreatedDate');
+                    }
+                  "
+                />
+                出力しない
+              </label>
+
               <input
-                type="radio"
-                name="title"
-                :checked="outputTitle"
-                @change="
-                  () => {
-                    outputTitle = true;
-                    setActive('Title');
-                  }
-                "
-              />
-              出力する
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="title"
-                :checked="!outputTitle"
-                @change="
-                  () => {
-                    outputTitle = false;
-                    setActive('Title');
-                  }
-                "
-              />
-              出力しない
-            </label>
-          </td>
-        </tr>
-
-        <tr>
-          <td
-            :class="activeTitle === 'Code' ? 'title-active' : 'title-inactive'"
-          >
-            会社コード
-          </td>
-          <td>
-            <label>
-              <input
-                type="radio"
-                name="code"
-                :checked="outputCode"
-                @change="
-                  () => {
-                    outputCode = true;
-                    setActive('Code');
-                  }
-                "
-              />
-              出力する
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="code"
-                :checked="!outputCode"
-                @change="
-                  () => {
-                    outputCode = false;
-                    setActive('Code');
-                  }
-                "
-              />
-              出力しない
-            </label>
-          </td>
-        </tr>
-
-        <tr>
-          <td
-            :class="
-              activeTitle === 'CreatedDate' ? 'title-active' : 'title-inactive'
-            "
-          >
-            作成日
-          </td>
-          <td class="date-row">
-            <label>
-              <input
-                type="radio"
-                name="date"
-                :checked="outputDate"
-                @change="
-                  () => {
-                    outputDate = true;
-                    setActive('CreatedDate');
-                  }
-                "
-              />
-              出力する
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="date"
-                :checked="!outputDate"
-                @change="
-                  () => {
-                    outputDate = false;
-                    outputTime = false;
-                    setActive('CreatedDate');
-                  }
-                "
-              />
-              出力しない
-            </label>
-
-            <input
-              v-model="year"
-              type="number"
-              class="date-input-60 pg border1"
-              :disabled="!outputDate"
-              @click="onDateCreateClicked"
-            />
-            年
-
-            <input
-              v-model="month"
-              type="number"
-              class="date-input-40 pg border1"
-              :disabled="!outputDate"
-              @click="onDateCreateClicked"
-            />
-            月
-
-            <input
-              v-model="day"
-              type="number"
-              class="date-input-40 pg border1"
-              :disabled="!outputDate"
-              @click="onDateCreateClicked"
-            />
-            日
-          </td>
-        </tr>
-
-        <tr>
-          <td
-            :class="activeTitle === 'Time' ? 'title-active' : 'title-inactive'"
-          >
-            時 刻
-          </td>
-          <td class="time-row">
-            <label>
-              <input
-                type="radio"
-                name="time"
-                :checked="outputTime"
+                v-model="year"
+                type="number"
+                class="date-input-60 pg border1"
                 :disabled="!outputDate"
-                @change="outputTime = true"
-                @click="setActive('Time')"
+                @click="onDateCreateClicked"
               />
-              出力する
-            </label>
+              年
 
-            <label style="margin-left: 20px">
               <input
-                type="radio"
-                name="time"
-                :checked="!outputTime"
+                v-model="month"
+                type="number"
+                class="date-input-40 pg border1"
                 :disabled="!outputDate"
-                @change="outputTime = false"
-                @click="setActive('Time')"
+                @click="onDateCreateClicked"
               />
-              出力しない
-            </label>
-          </td>
-        </tr>
+              月
 
-        <tr>
-          <td
-            :class="
-              activeTitle === 'Period' ? 'title-active' : 'title-inactive'
-            "
-          >
-            整理月情報
-          </td>
-          <td>
-            <label>
               <input
-                type="radio"
-                name="period"
-                :checked="outputPeriod"
-                @change="
-                  () => {
-                    outputPeriod = true;
-                    setActive('Period');
-                  }
-                "
+                v-model="day"
+                type="number"
+                class="date-input-40 pg border1"
+                :disabled="!outputDate"
+                @click="onDateCreateClicked"
               />
-              出力する
-            </label>
+              日
+            </td>
+          </tr>
 
-            <label style="margin-left: 20px">
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Time' ? 'title-active' : 'title-inactive'
+              "
+            >
+              時 刻
+            </td>
+            <td class="time-row">
+              <label>
+                <input
+                  type="radio"
+                  name="time"
+                  :checked="outputTime"
+                  :disabled="!outputDate"
+                  @change="outputTime = true"
+                  @click="setActive('Time')"
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="time"
+                  :checked="!outputTime"
+                  :disabled="!outputDate"
+                  @change="outputTime = false"
+                  @click="setActive('Time')"
+                />
+                出力しない
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Period' ? 'title-active' : 'title-inactive'
+              "
+            >
+              整理月情報
+            </td>
+            <td>
+              <label>
+                <input
+                  type="radio"
+                  name="period"
+                  :checked="outputPeriod"
+                  @change="
+                    () => {
+                      outputPeriod = true;
+                      setActive('Period');
+                    }
+                  "
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="period"
+                  :checked="!outputPeriod"
+                  @change="
+                    () => {
+                      outputPeriod = false;
+                      setActive('Period');
+                    }
+                  "
+                />
+                出力しない
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'PageRange' ? 'title-active' : 'title-inactive'
+              "
+            >
+              頁 範 囲
+            </td>
+            <td>
+              <label>
+                <input
+                  type="radio"
+                  name="pageRange"
+                  :checked="outputPageRange"
+                  @change="
+                    () => {
+                      outputPageRange = true;
+                      setActive('PageRange');
+                    }
+                  "
+                />
+                出力する
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="pageRange"
+                  :checked="!outputPageRange"
+                  @change="
+                    () => {
+                      outputPageRange = false;
+                      setActive('PageRange');
+                    }
+                  "
+                />
+                出力しない
+              </label>
+
               <input
-                type="radio"
-                name="period"
-                :checked="!outputPeriod"
-                @change="
-                  () => {
-                    outputPeriod = false;
-                    setActive('Period');
-                  }
-                "
+                v-model="pageFrom"
+                style="margin-left: 30px"
+                type="number"
+                class="pg date-input-60 border1"
+                :disabled="!outputPageRange"
+                @click="onPageRangeClicked"
               />
-              出力しない
-            </label>
-          </td>
-        </tr>
+              から
 
-        <tr>
-          <td
-            :class="
-              activeTitle === 'PageRange' ? 'title-active' : 'title-inactive'
-            "
-          >
-            頁 範 囲
-          </td>
-          <td>
-            <label>
               <input
-                type="radio"
-                name="pageRange"
-                :checked="outputPageRange"
-                @change="
-                  () => {
-                    outputPageRange = true;
-                    setActive('PageRange');
-                  }
-                "
+                v-model="pageTo"
+                type="number"
+                class="pg date-input-60 border1"
+                :disabled="!outputPageRange"
+                @click="onPageRangeClicked"
               />
-              出力する
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="pageRange"
-                :checked="!outputPageRange"
-                @change="
-                  () => {
-                    outputPageRange = false;
-                    setActive('PageRange');
-                  }
-                "
-              />
-              出力しない
-            </label>
-
-            <input
-              v-model="pageFrom"
-              style="margin-left: 30px"
-              type="number"
-              class="pg date-input-60 border1"
-              :disabled="!outputPageRange"
-              @click="onPageRangeClicked"
-            />
-            から
-
-            <input
-              v-model="pageTo"
-              type="number"
-              class="pg date-input-60 border1"
-              :disabled="!outputPageRange"
-              @click="onPageRangeClicked"
-            />
-            頁まで
-          </td>
-        </tr>
+              頁まで
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
 
@@ -428,154 +437,168 @@ const hintText = computed(() => {
       <div class="print-group-title">印刷項目</div>
 
       <table class="print-table">
-        <tr>
-          <td
-            :class="
-              activeTitle === 'Printer' ? 'title-active' : 'title-inactive'
-            "
-          >
-            プリンタ
-          </td>
-          <td>
-            <select
-              v-model="printer"
-              class="print-select border1"
-              @click="setActive('Printer')"
+        <tbody>
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Printer' ? 'title-active' : 'title-inactive'
+              "
             >
-              <option v-for="item in printerOptions" :key="item" :value="item">
-                {{ item }}
-              </option>
-            </select>
-          </td>
-        </tr>
+              プリンタ
+            </td>
+            <td>
+              <select
+                v-model="printer"
+                class="print-select border1"
+                @click="setActive('Printer')"
+              >
+                <option
+                  v-for="item in printerOptions"
+                  :key="item"
+                  :value="item"
+                >
+                  {{ item }}
+                </option>
+              </select>
+            </td>
+          </tr>
 
-        <tr>
-          <td
-            :class="
-              activeTitle === 'PaperTray' ? 'title-active' : 'title-inactive'
-            "
-          >
-            用紙トレイ
-          </td>
-          <td>
-            <select
-              v-model="paperTray"
-              class="print-select border1"
-              @click="setActive('PaperTray')"
+          <tr>
+            <td
+              :class="
+                activeTitle === 'PaperTray' ? 'title-active' : 'title-inactive'
+              "
             >
-              <option v-for="item in printerOptions" :key="item" :value="item">
-                {{ item }}
-              </option>
-            </select>
-          </td>
-        </tr>
+              用紙トレイ
+            </td>
+            <td>
+              <select
+                v-model="paperTray"
+                class="print-select border1"
+                @click="setActive('PaperTray')"
+              >
+                <option
+                  v-for="item in printerOptions"
+                  :key="item"
+                  :value="item"
+                >
+                  {{ item }}
+                </option>
+              </select>
+            </td>
+          </tr>
 
-        <tr>
-          <td
-            :class="activeTitle === 'Ori' ? 'title-active' : 'title-inactive'"
-          >
-            用紙方向
-          </td>
-          <td>
-            <label>
+          <tr>
+            <td
+              :class="activeTitle === 'Ori' ? 'title-active' : 'title-inactive'"
+            >
+              用紙方向
+            </td>
+            <td>
+              <label>
+                <input
+                  type="radio"
+                  name="ori"
+                  :checked="outputOri"
+                  @change="
+                    () => {
+                      outputOri = true;
+                      setActive('Ori');
+                    }
+                  "
+                />
+                縦
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="ori"
+                  :checked="!outputOri"
+                  @change="
+                    () => {
+                      outputOri = false;
+                      setActive('Ori');
+                    }
+                  "
+                />
+                横
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'Size' ? 'title-active' : 'title-inactive'
+              "
+            >
+              用紙サイズ
+            </td>
+            <td @click="setActive('Size')">
+              <label>
+                <input
+                  type="radio"
+                  name="size"
+                  :checked="selectedSize === 'A3'"
+                  @change="selectedSize = 'A3'"
+                />
+                A3
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="size"
+                  :checked="selectedSize === 'A4'"
+                  @change="selectedSize = 'A4'"
+                />
+                A4
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="size"
+                  :checked="selectedSize === 'B4'"
+                  @change="selectedSize = 'B4'"
+                />
+                B4
+              </label>
+
+              <label style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="size"
+                  :checked="selectedSize === 'B5'"
+                  @change="selectedSize = 'B5'"
+                />
+                B5
+              </label>
+            </td>
+          </tr>
+
+          <tr>
+            <td
+              :class="
+                activeTitle === 'NumberOfCopy'
+                  ? 'title-active'
+                  : 'title-inactive'
+              "
+            >
+              部　数
+            </td>
+            <td>
               <input
-                type="radio"
-                name="ori"
-                :checked="outputOri"
-                @change="
-                  () => {
-                    outputOri = true;
-                    setActive('Ori');
-                  }
-                "
+                v-model.number="copies"
+                type="number"
+                class="date-input-40 pg"
+                @click="setActive('NumberOfCopy')"
               />
-              縦
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="ori"
-                :checked="!outputOri"
-                @change="
-                  () => {
-                    outputOri = false;
-                    setActive('Ori');
-                  }
-                "
-              />
-              横
-            </label>
-          </td>
-        </tr>
-
-        <tr>
-          <td
-            :class="activeTitle === 'Size' ? 'title-active' : 'title-inactive'"
-          >
-            用紙サイズ
-          </td>
-          <td @click="setActive('Size')">
-            <label>
-              <input
-                type="radio"
-                name="size"
-                :checked="selectedSize === 'A3'"
-                @change="selectedSize = 'A3'"
-              />
-              A3
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="size"
-                :checked="selectedSize === 'A4'"
-                @change="selectedSize = 'A4'"
-              />
-              A4
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="size"
-                :checked="selectedSize === 'B4'"
-                @change="selectedSize = 'B4'"
-              />
-              B4
-            </label>
-
-            <label style="margin-left: 20px">
-              <input
-                type="radio"
-                name="size"
-                :checked="selectedSize === 'B5'"
-                @change="selectedSize = 'B5'"
-              />
-              B5
-            </label>
-          </td>
-        </tr>
-
-        <tr>
-          <td
-            :class="
-              activeTitle === 'NumberOfCopy' ? 'title-active' : 'title-inactive'
-            "
-          >
-            部　数
-          </td>
-          <td>
-            <input
-              v-model="copies"
-              type="number"
-              class="date-input-40 pg"
-              @click="setActive('NumberOfCopy')"
-            />
-            部
-          </td>
-        </tr>
+              部
+            </td>
+          </tr>
+        </tbody>
       </table>
 
       <div class="printer-prop-box">

@@ -56,20 +56,21 @@ function confirmDialog() {
     :closable="true"
     :draggable="false"
     :style="{ width: '360px' }"
-    v-focustrap
     position="top"
     class="processing-period-dialog"
     @update:visible="emit('update:visible', $event)"
   >
-    <div class="p-body">
-      <div class="p-row">
-        <Select
-          v-model="selectedKesn"
-          :options="periods"
-          optionLabel="label"
-          optionValue="kesn"
-          autofocus
-        />
+    <div v-focustrap>
+      <div class="p-body">
+        <div class="p-row">
+          <Select
+            v-model="selectedKesn"
+            :options="periods"
+            optionLabel="label"
+            optionValue="kesn"
+            autofocus
+          />
+        </div>
       </div>
     </div>
 
