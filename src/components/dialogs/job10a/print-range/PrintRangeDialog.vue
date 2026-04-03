@@ -4,6 +4,8 @@ import Button from "primevue/button";
 import InputText from "primevue/inputtext";
 import { ref, watch } from "vue";
 import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter.vue";
+import SeqSearchDialog from "@/components/dialogs/job10a/seq-search/SeqSearchDialog.vue";
+import PrintSettingsDialog from "../print-settings/PrintSettingsDialog.vue";
 
 const props = defineProps<{
   visible: boolean;
@@ -34,11 +36,7 @@ function closeDialog() {
 }
 
 function confirmDialog() {
-  emit("confirm", {
-    from: fromValue.value,
-    to: toValue.value,
-  });
-  emit("update:visible", false);
+  showPrintSettingsDialog.value = true;
 }
 
 function handleSearch() {
@@ -47,6 +45,40 @@ function handleSearch() {
 
 function handleHistorySearch() {
   emit("historySearch");
+}
+
+const seqSearchVisible = ref(false);
+
+const kamokuItems = ref([
+  {
+    kicd: "1001",
+    kcod: "A01",
+    kana: "アイウ",
+    shortName: "科目A",
+    longName: "科目A正式名称",
+  },
+  {
+    kicd: "1002",
+    kcod: "B01",
+    kana: "カキク",
+    shortName: "科目B",
+    longName: "科目B正式名称",
+  },
+]);
+
+function handleSubmit(row: any) {
+  console.log("selected:", row);
+}
+
+const showPrintSettingsDialog = ref(false);
+
+function handlePrintSettingsConfirm(payload: any) {
+  console.log("print settings:", payload);
+
+  emit("confirm", {
+    from: fromValue.value,
+    to: toValue.value,
+  });
 }
 </script>
 
@@ -82,7 +114,7 @@ function handleHistorySearch() {
           <Button
             label="検索"
             class="action-btn primary-btn"
-            @click="handleSearch"
+            @click="seqSearchVisible = true"
           />
           <Button
             label="履歴検索"
@@ -91,70 +123,19 @@ function handleHistorySearch() {
           />
         </div>
 
+        <SeqSearchDialog
+          v-model:visible="seqSearchVisible"
+          :items="kamokuItems"
+          @submit="handleSubmit"
+        />
+        <PrintSettingsDialog
+          v-model:visible="showPrintSettingsDialog"
+          @confirm="handlePrintSettingsConfirm"
+        />
         <DialogDefaultFooter @confirm="confirmDialog" @cancel="closeDialog" />
       </div>
     </template>
   </Dialog>
 </template>
 
-<style scoped>
-.dialog-body {
-  padding: 20px 0 10px 0;
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.field-label {
-  min-width: 170px;
-  height: 34px;
-  background: #2f73c9;
-  color: #fff;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
-}
-
-.range-area {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.range-input {
-  width: 270px;
-  height: 34px;
-}
-
-.range-separator {
-  font-size: 22px;
-  color: #333;
-  line-height: 1;
-}
-
-.hint-text {
-  margin-top: 6px;
-  margin-left: 2px;
-  font-size: 18px;
-  color: #000;
-}
-
-.dialog-footer {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 14px;
-}
-
-.footer-left {
-  display: flex;
-  gap: 10px;
-}
-</style>
+<style scoped src="./PrintRangeDialog.css"></style>

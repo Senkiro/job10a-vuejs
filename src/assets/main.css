@@ -18,10 +18,16 @@ main {
   padding: 20px;
 }
 
+/* ****************************************************************************
+ *                             PRIMEVUE :DEEP OVERRIDE
+ *                  Custom Focus Style / Remove Default Theme Border
+ * ************************************************************************** */
+
 /* ================================ Button Styles ================================ */
 .p-button.action-btn {
   min-width: 130px;
   height: 38px;
+
   font-size: 18px;
 }
 
@@ -52,7 +58,7 @@ main {
 /* ================================ Dialog Styles ================================ */
 .p-dialog .p-dialog-header {
   border-bottom: 1px solid #dee2e6;
-  height: 70px;
+  height: 50px;
 }
 .p-dialog .p-dialog-title {
   font-weight: 400 !important;
@@ -60,3 +66,26 @@ main {
 }
 
 /* ================================ Dialog Styles ================================ */
+
+/* ================================ Text input Styles ================================ */
+.p-inputtext {
+  border: 2px solid grey !important;
+  border-radius: 6px !important;
+  box-sizing: border-box;
+}
+
+.p-inputtext:enabled:focus,
+.p-inputtext.p-focus {
+  background: #f6e7a8 !important;
+  border: 2px solid grey !important;
+  border-bottom-color: #2f73c9 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ================================ Text input Styles ================================ */
+
+/* ****************************************************************************
+ *                             PRIMEVUE :DEEP OVERRIDE
+ *                  Custom Focus Style / Remove Default Theme Border
+ * ************************************************************************** */
