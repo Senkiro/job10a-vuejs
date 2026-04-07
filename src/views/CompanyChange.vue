@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
-import { login } from "@/services/authService";
-import { getNames } from "@/services/job10aService";
+import { useAuthStore } from "@/stores/auth";
 import { useToast } from "primevue/usetoast";
 
 import Toast from "primevue/toast";
@@ -14,7 +13,7 @@ type CompanyOption = {
 };
 
 const router = useRouter();
-
+const authStore = useAuthStore();
 const companyId = ref("");
 const selectedCompany = ref("");
 const isLoading = ref(false);
@@ -77,11 +76,7 @@ async function handleOk() {
   try {
     isLoading.value = true;
 
-    const response = await login(payload);
-
-    console.log("Login success:", response.data);
-
-    sessionStorage.setItem("companyId", response.data?.data?.companyId);
+    await authStore.loginAction(payload);
 
     toast.add({
       severity: "success",
@@ -90,8 +85,6 @@ async function handleOk() {
       life: 3000,
     });
 
-    const response2 = await getNames(payload2);
-    console.log(response2);
     await sleep(3000);
     router.push("/");
   } catch (error) {

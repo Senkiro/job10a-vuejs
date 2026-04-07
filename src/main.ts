@@ -12,8 +12,13 @@ import PrimeVue from "primevue/config";
 import Aura from "@primeuix/themes/aura";
 import ToastService from "primevue/toastservice";
 import FocusTrap from "primevue/focustrap";
+import { createPinia } from "pinia";
+import { setupInterceptors } from "@/api/setupInterceptors";
+
 const app = createApp(App);
 
+app.use(createPinia());
+setupInterceptors();
 app.use(router);
 app.use(PrimeVue, {
   theme: {

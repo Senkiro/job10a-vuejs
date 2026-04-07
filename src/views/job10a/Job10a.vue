@@ -8,6 +8,8 @@ import { computed, onMounted, ref } from "vue";
 import PrintRangeDialog from "@/components/dialogs/job10a/print-range/PrintRangeDialog.vue";
 import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
 import ProcessingPeriodDialog from "@/components/dialogs/job10a/processing-period/ProcessingPeriodDialog.vue";
+import { getNames } from "@/services/job10aService";
+import { checkRirekiStatus } from "@/services/job10aService";
 
 type LeftRow = {
   del: string;
@@ -149,7 +151,21 @@ function handleProcessingPeriod(kesn: string) {
   console.log("Processing period:", kesn);
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const rawKesn = localStorage.getItem("current_kesn");
+  const currentKesn = rawKesn ? parseInt(rawKesn, 10) : null;
+
+  if (currentKesn === null || Number.isNaN(currentKesn)) {
+    return;
+  }
+
+  try {
+    const response = await checkRirekiStatus(currentKesn);
+    console.log(response.data);
+  } catch (error) {
+    console.error(error);
+  }
+
   showOutputSettingsDialog.value = true;
 });
 </script>
