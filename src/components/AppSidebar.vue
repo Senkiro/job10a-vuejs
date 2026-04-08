@@ -38,7 +38,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const companyCode = sessionStorage.getItem("companyId") ?? "Change Comapny";
+const companyCode = localStorage.getItem("company_id") ?? "Change Comapny";
 
 const isActive = (path: string) => route.path === path;
 

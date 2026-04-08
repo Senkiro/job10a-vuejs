@@ -11,12 +11,35 @@ import Avatar from "primevue/avatar";
 import { ref } from "vue";
 import { footerjob30 } from "@/constants/footerButtonsConfigs";
 import { headerMenusJob30 } from "@/constants/headerConfigs";
+import { ShowConfirmDialog } from "@/services/confirmDialogService";
+import { ShowMessageDialog } from "@/services/messageDialogService";
+import { MessageBoxIcon } from "@/constants/messageBoxIcon";
 
 const visible = ref(false);
 
-function handleFooterKeyClick(key: number) {
-  console.log("Đã bấm phím:", key);
+async function handleSave() {
+  visible.value = false;
 
+  await ShowMessageDialog(
+    "Đã lưu dữ liệu thành công",
+    "Thông báo",
+    MessageBoxIcon.Success,
+  );
+}
+
+async function handleDelete() {
+  const ok = await ShowConfirmDialog(
+    "Bạn có chắc muốn xóa dữ liệu này?",
+    "Xác nhận xóa",
+    MessageBoxIcon.Warning,
+  );
+
+  if (!ok) return;
+
+  console.log("User chọn OK");
+}
+
+function handleFooterKeyClick(key: number) {
   switch (key) {
     case 2:
       console.log("In");
@@ -49,6 +72,8 @@ function handleFooterKeyClick(key: number) {
       <main>
         <h1>job30</h1>
       </main>
+
+      <button @click="handleDelete">Delete</button>
 
       <div class="card">
         <Button label="Show" @click="visible = true" />
@@ -92,7 +117,7 @@ function handleFooterKeyClick(key: number) {
               label="Save"
               variant="outlined"
               severity="secondary"
-              @click="visible = false"
+              @click="handleSave"
             />
           </template>
         </Dialog>
@@ -100,48 +125,9 @@ function handleFooterKeyClick(key: number) {
 
       <AppFooter
         :buttons="footerjob30"
-        :enabled-keys="[4]"
+        :enabled-keys="[4, 8]"
         @key-click="handleFooterKeyClick"
       />
     </div>
   </div>
 </template>
-
-<style scoped>
-.card {
-  padding: 16px;
-}
-
-.dialog-header-custom {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.dialog-name {
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.dialog-desc {
-  display: block;
-  margin-bottom: 16px;
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.form-row label {
-  width: 90px;
-  font-weight: 600;
-}
-
-.input-grow {
-  flex: 1;
-}
-</style>

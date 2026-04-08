@@ -1,8 +1,10 @@
 <script setup lang="ts">
 export type HeaderMenuChild = {
   label: string;
+  key?: number;
   disabled?: boolean;
   separatorAfter?: boolean;
+  actionKey?: number;
 };
 
 export type HeaderMenuItem = {
@@ -10,7 +12,7 @@ export type HeaderMenuItem = {
   children?: HeaderMenuChild[];
 };
 
-const props = defineProps<{
+defineProps<{
   userName: string;
   title: string;
   periodText: string;
@@ -19,6 +21,21 @@ const props = defineProps<{
   showHelp?: boolean;
   showShortcut?: boolean;
 }>();
+
+const emit = defineEmits<{
+  (
+    e: "menu-click",
+    payload: {
+      menu: HeaderMenuItem;
+      child: HeaderMenuChild;
+    },
+  ): void;
+}>();
+
+function handleChildClick(menu: HeaderMenuItem, child: HeaderMenuChild) {
+  if (child.disabled) return;
+  emit("menu-click", { menu, child });
+}
 </script>
 
 <template>
@@ -27,8 +44,8 @@ const props = defineProps<{
       <a>
         {{ userName }}
         <span style="margin-left: 5px">
-          <i class="bi bi-person-circle"></i>
-        </span>
+          <i class="bi bi-person-circle"></i> </span
+        >,
       </a>
     </div>
 
@@ -51,6 +68,7 @@ const props = defineProps<{
                 'disabled-item': child.disabled,
                 'separator-after': child.separatorAfter,
               }"
+              @click.stop="handleChildClick(menu, child)"
             >
               {{ child.label }}
             </li>

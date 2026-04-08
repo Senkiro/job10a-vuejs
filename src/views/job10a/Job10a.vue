@@ -4,12 +4,23 @@ import AppHeader from "@/components/AppHeader.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 import { footerJob10a } from "@/constants/footerButtonsConfigs";
 import { headerMenusJob10a } from "@/constants/headerConfigs";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+
 import PrintRangeDialog from "@/components/dialogs/job10a/print-range/PrintRangeDialog.vue";
 import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
 import ProcessingPeriodDialog from "@/components/dialogs/job10a/processing-period/ProcessingPeriodDialog.vue";
-import { getNames } from "@/services/job10aService";
+
 import { checkRirekiStatus } from "@/services/job10aService";
+import { ShowConfirmDialog } from "@/services/confirmDialogService";
+import { ShowMessageDialog } from "@/services/messageDialogService";
+import { MessageBoxIcon } from "@/constants/messageBoxIcon";
+
+type CheckRirekiStatusResponse = {
+  rirekiType: number;
+  currentSyorikiDensiTyouboHozonUsage: number;
+  isCurrentKaisyaDensiTyouboHozonUsage: boolean;
+};
 
 type LeftRow = {
   del: string;
@@ -27,6 +38,13 @@ type RightRow = {
   leftCode: string;
 };
 
+const router = useRouter();
+
+const CURRENT_KESN_KEY = "current_kesn";
+const RIREKI_TYPE_KEY = "rirekiType";
+const CURRENT_SYORIKI_KEY = "currentSyorikiDensiTyouboHozonUsage";
+const CURRENT_KAISYA_DENSHI_KEY = "isCurrentKaisyaDensiTyouboHozonUsage";
+
 const showPrintRangeDialog = ref(false);
 const showOutputSettingsDialog = ref(false);
 const showProcessingPeriodSelectDialog = ref(false);
@@ -34,6 +52,7 @@ const showProcessingPeriodSelectDialog = ref(false);
 const message = ref("");
 
 const selectedLeftIndex = ref<number | null>(0);
+const outputSettingKesn = ref<number>(0);
 
 const leftRows = ref<LeftRow[]>([
   {
@@ -125,7 +144,13 @@ function selectLeftRow(index: number) {
   selectedLeftIndex.value = index;
 }
 
-function handleFooterKeyClick(key: number) {
+function handleDialogAction(
+  input: number | { child?: { actionKey?: number } },
+) {
+  const key = typeof input === "number" ? input : input?.child?.actionKey;
+
+  if (!key) return;
+
   switch (key) {
     case 2:
       showPrintRangeDialog.value = true;
@@ -147,24 +172,192 @@ function handleOutputSettings(payload: any) {
   console.log("Output settings:", payload);
 }
 
-function handleProcessingPeriod(kesn: string) {
-  console.log("Processing period:", kesn);
+function getCurrentKesnFromLocal(): number | null {
+  const raw = localStorage.getItem(CURRENT_KESN_KEY);
+  if (!raw) return null;
+
+  const value = parseInt(raw, 10);
+  return Number.isNaN(value) ? null : value;
 }
 
-onMounted(async () => {
-  const rawKesn = localStorage.getItem("current_kesn");
-  const currentKesn = rawKesn ? parseInt(rawKesn, 10) : null;
+function saveCurrentKesnToLocal() {
+  localStorage.setItem(CURRENT_KESN_KEY, String(outputSettingKesn.value));
+}
 
-  if (currentKesn === null || Number.isNaN(currentKesn)) {
+function saveStatusToLocal(status: CheckRirekiStatusResponse) {
+  localStorage.setItem(RIREKI_TYPE_KEY, String(status.rirekiType));
+  localStorage.setItem(
+    CURRENT_SYORIKI_KEY,
+    String(status.currentSyorikiDensiTyouboHozonUsage),
+  );
+  localStorage.setItem(
+    CURRENT_KAISYA_DENSHI_KEY,
+    String(status.isCurrentKaisyaDensiTyouboHozonUsage),
+  );
+}
+
+function mapStatusResponse(response: any): CheckRirekiStatusResponse {
+  const raw = response?.data?.data ?? response?.data ?? response;
+
+  return {
+    rirekiType: Number(raw?.rirekiType ?? 0),
+    currentSyorikiDensiTyouboHozonUsage: Number(
+      raw?.currentSyorikiDensiTyouboHozonUsage ?? 0,
+    ),
+    isCurrentKaisyaDensiTyouboHozonUsage: Boolean(
+      raw?.isCurrentKaisyaDensiTyouboHozonUsage ?? false,
+    ),
+  };
+}
+
+// ===== F8 modal promise handling =====
+let processingPeriodResolver: ((value: boolean) => void) | null = null;
+const processingPeriodHandled = ref(false);
+
+function showF8Modal(): Promise<boolean> {
+  processingPeriodHandled.value = false;
+  showProcessingPeriodSelectDialog.value = true;
+
+  return new Promise<boolean>((resolve) => {
+    processingPeriodResolver = resolve;
+  });
+}
+
+function handleProcessingPeriod(kesn: string) {
+  const parsedKesn = parseInt(kesn, 10);
+
+  if (Number.isNaN(parsedKesn)) {
+    if (processingPeriodResolver) {
+      processingPeriodResolver(false);
+      processingPeriodResolver = null;
+    }
+    showProcessingPeriodSelectDialog.value = false;
     return;
   }
 
-  try {
-    const response = await checkRirekiStatus(currentKesn);
-    console.log(response.data);
-  } catch (error) {
-    console.error(error);
+  outputSettingKesn.value = parsedKesn;
+  processingPeriodHandled.value = true;
+
+  if (processingPeriodResolver) {
+    processingPeriodResolver(true);
+    processingPeriodResolver = null;
   }
+
+  showProcessingPeriodSelectDialog.value = false;
+}
+
+watch(showProcessingPeriodSelectDialog, (visible) => {
+  if (!visible && !processingPeriodHandled.value && processingPeriodResolver) {
+    processingPeriodResolver(false);
+    processingPeriodResolver = null;
+  }
+});
+
+async function checkRirekiStatusAsync(): Promise<boolean> {
+  const kesnToCheck = getCurrentKesnFromLocal() ?? 0;
+
+  if (kesnToCheck === 0) {
+    router.push("/");
+    return false;
+  }
+
+  try {
+    const response = await checkRirekiStatus(kesnToCheck);
+    const status = mapStatusResponse(response);
+
+    saveStatusToLocal(status);
+
+    if (status.rirekiType !== 0) {
+      outputSettingKesn.value = kesnToCheck;
+      saveCurrentKesnToLocal();
+      return true;
+    }
+
+    if (status.isCurrentKaisyaDensiTyouboHozonUsage === false) {
+      await ShowMessageDialog(
+        "・電子帳簿保存を使用するマスター\n" +
+          "・内部統制機能強化モードマスター\n" +
+          "・履歴を保存するマスター(履歴処理)\n" +
+          "のいずれでもありません。\n" +
+          "業務を終了します。",
+        "科目履歴一覧",
+        MessageBoxIcon.Error,
+      );
+
+      router.push("/");
+      return false;
+    }
+
+    if (status.currentSyorikiDensiTyouboHozonUsage === 0) {
+      const changePeriod = await ShowConfirmDialog(
+        "当期は処理できません。\n処理期を変更しますか。",
+        "処理期変更",
+        MessageBoxIcon.Question,
+      );
+
+      if (!changePeriod) {
+        router.push("/");
+        return false;
+      }
+
+      while (true) {
+        const selected = await showF8Modal();
+
+        if (!selected) {
+          const exit = await ShowConfirmDialog(
+            "処理期が選択されていません。\n科目履歴一覧を終了しますか。",
+            "処理期変更",
+            MessageBoxIcon.Question,
+          );
+
+          if (exit) {
+            router.push("/");
+            return false;
+          }
+
+          continue;
+        }
+
+        const kesnSelected = outputSettingKesn.value;
+        const responseAfterSelect = await checkRirekiStatus(kesnSelected);
+        const statusAfterSelect = mapStatusResponse(responseAfterSelect);
+
+        saveStatusToLocal(statusAfterSelect);
+
+        if (statusAfterSelect.currentSyorikiDensiTyouboHozonUsage === 0) {
+          const changeAgain = await ShowConfirmDialog(
+            "指定処理期は処理できません。\n処理期を変更しますか。",
+            "処理期変更",
+            MessageBoxIcon.Question,
+          );
+
+          if (!changeAgain) {
+            router.push("/");
+            return false;
+          }
+
+          continue;
+        }
+
+        saveCurrentKesnToLocal();
+        return true;
+      }
+    }
+
+    outputSettingKesn.value = kesnToCheck;
+    saveCurrentKesnToLocal();
+    return true;
+  } catch (error) {
+    console.error("checkRirekiStatusAsync error:", error);
+    router.push("/");
+    return false;
+  }
+}
+
+onMounted(async () => {
+  const ok = await checkRirekiStatusAsync();
+
+  if (!ok) return;
 
   showOutputSettingsDialog.value = true;
 });
@@ -176,13 +369,14 @@ onMounted(async () => {
 
     <div class="content-area">
       <AppHeader
-        user-name="User 0001"
+        userName="User 0001"
         title="科目履歴一覧"
-        period-text="当期：自 2026年 1月 1日 至 2026年12月31日"
-        screen-code="KNMRI-1"
+        periodText="当期：自 2026年 1月 1日 至 2026年12月31日"
+        screenCode="KNMRI-1"
         :menus="headerMenusJob10a"
-        :show-help="true"
-        :show-shortcut="true"
+        :showHelp="true"
+        :showShortcut="true"
+        @menu-click="handleDialogAction"
       />
 
       <main class="page-container">
@@ -291,7 +485,7 @@ onMounted(async () => {
       <AppFooter
         :buttons="footerJob10a"
         :enabled-keys="[2, 4, 8]"
-        @key-click="handleFooterKeyClick"
+        @key-click="handleDialogAction"
       />
     </div>
   </div>

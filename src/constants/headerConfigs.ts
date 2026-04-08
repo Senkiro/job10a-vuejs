@@ -3,15 +3,15 @@ import type { HeaderMenuItem } from "@/components/AppHeader.vue";
 export const headerMenusJob10a: HeaderMenuItem[] = [
   {
     label: "ファイル(F)",
-    children: [{ label: "印刷(P)...F2" }],
+    children: [{ label: "印刷(P)...F2", actionKey: 2 }],
   },
   {
     label: "オプション(O)",
-    children: [{ label: "出力設定(O)...F4" }],
+    children: [{ label: "出力設定(O)...F4", actionKey: 4 }],
   },
   {
     label: "処理月変更(R)",
-    children: [{ label: "処理期選択(S)...F8" }],
+    children: [{ label: "処理期選択(S)...F8", actionKey: 8 }],
   },
   {
     label: "バージョン(A)",

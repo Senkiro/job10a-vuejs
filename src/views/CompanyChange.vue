@@ -21,13 +21,15 @@ const isLoading = ref(false);
 const companies = ref<CompanyOption[]>([
   { label: "-- 会社を選択します -- ", value: "" },
   { label: "5000 自2026年1月1日～2026年12月31日", value: "5000" },
-  { label: "5001 自2026年1月1日～2026年12月31日", value: "5001" },
-  { label: "5002 自2026年1月1日～2026年12月31日", value: "5002" },
-  { label: "5003 自2026年1月1日～2026年12月31日", value: "5003" },
-  { label: "5004 自2026年1月1日～2026年12月31日", value: "5004" },
-  { label: "5005 自2026年1月1日～2026年12月31日", value: "5005" },
-  { label: "5006 自2026年1月1日～2026年12月31日", value: "5006" },
-  { label: "5007 自2026年1月1日～2026年12月31日", value: "5007" },
+  // { label: "5001 自2026年1月1日～2026年12月31日", value: "5001" },
+  // { label: "5002 自2026年1月1日～2026年12月31日", value: "5002" },
+  // { label: "5003 自2026年1月1日～2026年12月31日", value: "5003" },
+  // { label: "5004 自2026年1月1日～2026年12月31日", value: "5004" },
+  // { label: "5005 自2026年1月1日～2026年12月31日", value: "5005" },
+  // { label: "5006 自2026年1月1日～2026年12月31日", value: "5006" },
+  // { label: "5007 自2026年1月1日～2026年12月31日", value: "5007" },
+  { label: "5008 自2026年1月1日～2026年12月31日", value: "5008" },
+  { label: "7000 自2026年1月1日～2026年12月31日", value: "7000" },
 ]);
 
 function sleep(ms: number) {
@@ -68,11 +70,6 @@ async function handleOk() {
     companyId: selectedCompany.value.trim(),
   };
 
-  const payload2 = {
-    kesn: 13,
-    kicd: "000000000001001",
-  };
-
   try {
     isLoading.value = true;
 
@@ -85,7 +82,7 @@ async function handleOk() {
       life: 3000,
     });
 
-    await sleep(3000);
+    //await sleep(3000);
     router.push("/");
   } catch (error) {
     toast.add({
