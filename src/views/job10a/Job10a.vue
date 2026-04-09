@@ -1,20 +1,34 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+
 import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
-import { footerJob10a } from "@/constants/footerButtonsConfigs";
-import { headerMenusJob10a } from "@/constants/headerConfigs";
-import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 
 import PrintRangeDialog from "@/components/dialogs/job10a/print-range/PrintRangeDialog.vue";
 import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
 import ProcessingPeriodDialog from "@/components/dialogs/job10a/processing-period/ProcessingPeriodDialog.vue";
 
-import { checkRirekiStatus } from "@/services/job10aService";
+import { footerJob10a } from "@/constants/footerButtonsConfigs";
+import { headerMenusJob10a } from "@/constants/headerConfigs";
+import { MessageBoxIcon } from "@/constants/messageBoxIcon";
+
+import {
+  checkRirekiStatus,
+  getDetailHistory,
+  getNames,
+  latestKmrkiDisplay,
+  saveOption,
+  type LatestKmrkiDisplayRequest,
+  type LatestKmrkiDisplayResponse,
+  type SaveOptionRequest,
+} from "@/services/job10aService";
+
 import { ShowConfirmDialog } from "@/services/confirmDialogService";
 import { ShowMessageDialog } from "@/services/messageDialogService";
-import { MessageBoxIcon } from "@/constants/messageBoxIcon";
+import { toNumberOrNull } from "@/utils/number";
+import { convertToReiwaFromNumber } from "@/utils/date";
 
 type CheckRirekiStatusResponse = {
   rirekiType: number;
@@ -24,134 +38,211 @@ type CheckRirekiStatusResponse = {
 
 type LeftRow = {
   del: string;
-  internalCode: string;
+  kicd: string;
   code: string;
   name: string;
 };
 
 type RightRow = {
-  changeDate: string;
-  code: string;
-  screenName: string;
-  printName: string;
-  type: string;
-  leftCode: string;
+  kesn: number;
+  kcod: string;
+  knmx: string;
+  knam: string;
+  kicd: string;
+  lmod: number;
+  fmod: number;
+  ltim: number;
+  ftim: number;
+  case: string;
+};
+
+type HeaderMenuPayload = {
+  child?: {
+    actionKey?: number;
+  };
+};
+
+type HistoryLikeRow = {
+  kesn: number;
+  kcod: string;
+  knmx: string;
+  knam: string;
+  kicd: string;
+  lmod: number;
+  fmod: number;
+  ltim: number;
+  ftim: number;
+  case: string;
 };
 
 const router = useRouter();
 
-const CURRENT_KESN_KEY = "current_kesn";
-const RIREKI_TYPE_KEY = "rirekiType";
-const CURRENT_SYORIKI_KEY = "currentSyorikiDensiTyouboHozonUsage";
-const CURRENT_KAISYA_DENSHI_KEY = "isCurrentKaisyaDensiTyouboHozonUsage";
+/* =========================
+ * localStorage keys
+ * ========================= */
+const STORAGE_KEYS = {
+  currentKesn: "current_kesn",
+  rirekiType: "rirekiType",
+  currentSyoriki: "currentSyorikiDensiTyouboHozonUsage",
+  currentKaisyaDenshi: "isCurrentKaisyaDensiTyouboHozonUsage",
+} as const;
+
+/* =========================
+ * states
+ * ========================= */
+const currentRequest = ref<LatestKmrkiDisplayRequest | null>(null);
 
 const showPrintRangeDialog = ref(false);
 const showOutputSettingsDialog = ref(false);
 const showProcessingPeriodSelectDialog = ref(false);
 
 const message = ref("");
+const selectedLeftIndex = ref<number | null>(null);
+const outputSettingKesn = ref(0);
 
-const selectedLeftIndex = ref<number | null>(0);
-const outputSettingKesn = ref<number>(0);
+const leftRows = ref<LeftRow[]>([]);
+const rightRows = ref<RightRow[]>([]);
 
-const leftRows = ref<LeftRow[]>([
-  {
-    del: "",
-    internalCode: "1000000001",
-    code: "101",
-    name: "現金",
-  },
-  {
-    del: "削",
-    internalCode: "1000000002",
-    code: "102",
-    name: "普通預金",
-  },
-  {
-    del: "",
-    internalCode: "1000000003",
-    code: "201",
-    name: "売掛金",
-  },
-  {
-    del: "",
-    internalCode: "1000000004",
-    code: "301",
-    name: "備品",
-  },
-]);
-
-const rightRows = ref<RightRow[]>([
-  {
-    changeDate: "2026/01/05",
-    code: "101",
-    screenName: "現金",
-    printName: "現金",
-    type: "追",
-    leftCode: "101",
-  },
-  {
-    changeDate: "2026/01/18",
-    code: "101",
-    screenName: "現金(本店)",
-    printName: "現金本店",
-    type: "変",
-    leftCode: "101",
-  },
-  {
-    changeDate: "2026/02/02",
-    code: "102",
-    screenName: "普通預金",
-    printName: "普通預金",
-    type: "追",
-    leftCode: "102",
-  },
-  {
-    changeDate: "2026/02/15",
-    code: "201",
-    screenName: "売掛金",
-    printName: "売掛金",
-    type: "変",
-    leftCode: "201",
-  },
-  {
-    changeDate: "2026/03/01",
-    code: "301",
-    screenName: "備品",
-    printName: "備品",
-    type: "追",
-    leftCode: "301",
-  },
-]);
-
-const selectedLeftRow = computed(() => {
-  if (selectedLeftIndex.value === null) return null;
-  return leftRows.value[selectedLeftIndex.value] ?? null;
+/* =========================
+ * computed
+ * ========================= */
+const rightStickyRow = computed<RightRow | null>(() => {
+  return rightRows.value[0] ?? null;
 });
 
-const filteredRightRows = computed(() => {
-  if (!selectedLeftRow.value) return [];
-  return rightRows.value.filter(
-    (row) => row.leftCode === selectedLeftRow.value?.code,
-  );
+const filteredRightRows = computed<RightRow[]>(() => {
+  return rightRows.value.slice(1);
 });
 
-const rightStickyRow = computed(() => {
-  return filteredRightRows.value[0] ?? null;
-});
-
-function selectLeftRow(index: number) {
-  selectedLeftIndex.value = index;
+/* =========================
+ * formatter / normalize
+ * ========================= */
+function normalizeDateForApi(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.replace(/\D/g, "");
 }
 
-function handleDialogAction(
-  input: number | { child?: { actionKey?: number } },
-) {
-  const key = typeof input === "number" ? input : input?.child?.actionKey;
+function normalizeTimeForApi(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.replace(/\D/g, "");
+}
 
-  if (!key) return;
+/* =========================
+ * localStorage helpers
+ * ========================= */
+function getStoredKesn(): number {
+  return toNumberOrNull(localStorage.getItem(STORAGE_KEYS.currentKesn)) ?? 0;
+}
 
-  switch (key) {
+function saveCurrentKesn(kesn: number) {
+  localStorage.setItem(STORAGE_KEYS.currentKesn, String(kesn));
+}
+
+function saveStatusToLocal(status: CheckRirekiStatusResponse) {
+  localStorage.setItem(STORAGE_KEYS.rirekiType, String(status.rirekiType));
+  localStorage.setItem(
+    STORAGE_KEYS.currentSyoriki,
+    String(status.currentSyorikiDensiTyouboHozonUsage),
+  );
+  localStorage.setItem(
+    STORAGE_KEYS.currentKaisyaDenshi,
+    String(status.isCurrentKaisyaDensiTyouboHozonUsage),
+  );
+}
+
+/* =========================
+ * mapping helpers
+ * ========================= */
+function mapStatusResponse(response: unknown): CheckRirekiStatusResponse {
+  const raw =
+    (response as { data?: Record<string, unknown> } | null)?.data ??
+    (response as Record<string, unknown> | null) ??
+    {};
+
+  return {
+    rirekiType: Number(raw.rirekiType ?? 0),
+    currentSyorikiDensiTyouboHozonUsage: Number(
+      raw.currentSyorikiDensiTyouboHozonUsage ?? 0,
+    ),
+    isCurrentKaisyaDensiTyouboHozonUsage: Boolean(
+      raw.isCurrentKaisyaDensiTyouboHozonUsage ?? false,
+    ),
+  };
+}
+
+function mapToLeftRow(item: LatestKmrkiDisplayResponse[number]): LeftRow {
+  return {
+    del: item.div,
+    kicd: item.kicd,
+    code: item.kcod,
+    name: item.knmx,
+  };
+}
+
+function mapToRightRow(item: HistoryLikeRow): RightRow {
+  return {
+    kesn: item.kesn,
+    kcod: item.kcod,
+    knmx: item.knmx,
+    knam: item.knam,
+    kicd: item.kicd,
+    lmod: item.lmod,
+    fmod: item.fmod,
+    ltim: item.ltim,
+    ftim: item.ftim,
+    case: item.case,
+  };
+}
+
+/* =========================
+ * table loaders
+ * ========================= */
+async function loadLeftRows(request: LatestKmrkiDisplayRequest) {
+  const displayResult = await latestKmrkiDisplay(request);
+  leftRows.value = displayResult.map(mapToLeftRow);
+}
+
+async function loadRightRows(kicd: string) {
+  const headerResponse = await getNames({
+    kesn: outputSettingKesn.value,
+    kicd: kicd,
+  });
+
+  const headerRows = headerResponse.map(mapToRightRow);
+
+  if (!currentRequest.value) {
+    rightRows.value = headerRows;
+    return;
+  }
+
+  const detailResponse = await getDetailHistory({
+    ...currentRequest.value,
+    kicd: kicd,
+  });
+
+  const detailRows = detailResponse.map(mapToRightRow);
+  rightRows.value = [...headerRows, ...detailRows];
+}
+
+async function selectLeftRow(index: number) {
+  const selected = leftRows.value[index];
+  if (!selected) return;
+
+  selectedLeftIndex.value = index;
+  rightRows.value = [];
+
+  try {
+    await loadRightRows(selected.kicd);
+  } catch (error) {
+    console.error("Load rightRows failed:", error);
+  }
+}
+
+/* =========================
+ * dialog openers
+ * ========================= */
+function openDialogByActionKey(actionKey: number) {
+  switch (actionKey) {
     case 2:
       showPrintRangeDialog.value = true;
       break;
@@ -164,55 +255,105 @@ function handleDialogAction(
   }
 }
 
+function handleDialogAction(input: number | HeaderMenuPayload) {
+  const actionKey = typeof input === "number" ? input : input.child?.actionKey;
+  if (!actionKey) return;
+
+  openDialogByActionKey(actionKey);
+}
+
+/* =========================
+ * dialog callbacks
+ * ========================= */
 function handlePrintRange() {
   console.log("Thực hiện in");
 }
 
-function handleOutputSettings(payload: any) {
-  console.log("Output settings:", payload);
+async function handleOutputSettings(payload: SaveOptionRequest) {
+  try {
+    const apiDate = normalizeDateForApi(payload.date);
+    const apiTime = normalizeTimeForApi(payload.time);
+
+    const request = {
+      userCode: payload.userCode,
+      programId: payload.programId,
+      selectOption: payload.selectOption,
+      date: apiDate,
+      time: apiTime,
+      add: payload.add,
+      upd: payload.upd,
+      del: payload.del,
+      kesn: payload.kesn,
+    };
+
+    if (apiDate === "") {
+      await ShowMessageDialog(
+        "指定日を入力してください。",
+        "履歴出力設定",
+        MessageBoxIcon.Warning,
+      );
+      return;
+    }
+
+    if (payload.add === 0 && payload.upd === 0 && payload.del === 0) {
+      await ShowMessageDialog(
+        "検索対象を指定してください。",
+        "履歴出力設定",
+        MessageBoxIcon.Warning,
+      );
+      return;
+    }
+
+    await saveOption(request);
+
+    const displayRequest: LatestKmrkiDisplayRequest = {
+      userCode: payload.userCode,
+      selectOption: payload.selectOption,
+      date: apiDate,
+      time: apiTime,
+      add: payload.add,
+      upd: payload.upd,
+      del: payload.del,
+      kesn: payload.kesn,
+      kicd: "",
+    };
+
+    currentRequest.value = displayRequest;
+    outputSettingKesn.value = payload.kesn;
+
+    selectedLeftIndex.value = null;
+    rightRows.value = [];
+
+    await loadLeftRows(displayRequest);
+
+    if (leftRows.value.length === 0) {
+      message.value = "出力対象となるデータはありません。";
+    } else {
+      message.value = "";
+      await selectLeftRow(0);
+    }
+
+    showOutputSettingsDialog.value = false;
+  } catch (error) {
+    console.error("Save output settings failed:", error);
+  }
 }
-
-function getCurrentKesnFromLocal(): number | null {
-  const raw = localStorage.getItem(CURRENT_KESN_KEY);
-  if (!raw) return null;
-
-  const value = parseInt(raw, 10);
-  return Number.isNaN(value) ? null : value;
-}
-
-function saveCurrentKesnToLocal() {
-  localStorage.setItem(CURRENT_KESN_KEY, String(outputSettingKesn.value));
-}
-
-function saveStatusToLocal(status: CheckRirekiStatusResponse) {
-  localStorage.setItem(RIREKI_TYPE_KEY, String(status.rirekiType));
-  localStorage.setItem(
-    CURRENT_SYORIKI_KEY,
-    String(status.currentSyorikiDensiTyouboHozonUsage),
-  );
-  localStorage.setItem(
-    CURRENT_KAISYA_DENSHI_KEY,
-    String(status.isCurrentKaisyaDensiTyouboHozonUsage),
-  );
-}
-
-function mapStatusResponse(response: any): CheckRirekiStatusResponse {
-  const raw = response?.data?.data ?? response?.data ?? response;
-
-  return {
-    rirekiType: Number(raw?.rirekiType ?? 0),
-    currentSyorikiDensiTyouboHozonUsage: Number(
-      raw?.currentSyorikiDensiTyouboHozonUsage ?? 0,
-    ),
-    isCurrentKaisyaDensiTyouboHozonUsage: Boolean(
-      raw?.isCurrentKaisyaDensiTyouboHozonUsage ?? false,
-    ),
-  };
-}
-
-// ===== F8 modal promise handling =====
+/* =========================
+ * F8 processing period dialog
+ * ========================= */
 let processingPeriodResolver: ((value: boolean) => void) | null = null;
 const processingPeriodHandled = ref(false);
+
+function resolveProcessingPeriod(result: boolean) {
+  if (!processingPeriodResolver) return;
+
+  processingPeriodResolver(result);
+  processingPeriodResolver = null;
+}
+
+function closeProcessingPeriodDialog() {
+  showProcessingPeriodSelectDialog.value = false;
+}
 
 function showF8Modal(): Promise<boolean> {
   processingPeriodHandled.value = false;
@@ -224,139 +365,155 @@ function showF8Modal(): Promise<boolean> {
 }
 
 function handleProcessingPeriod(kesn: string) {
-  const parsedKesn = parseInt(kesn, 10);
+  const parsedKesn = toNumberOrNull(kesn);
 
-  if (Number.isNaN(parsedKesn)) {
-    if (processingPeriodResolver) {
-      processingPeriodResolver(false);
-      processingPeriodResolver = null;
-    }
-    showProcessingPeriodSelectDialog.value = false;
+  if (parsedKesn === null) {
+    resolveProcessingPeriod(false);
+    closeProcessingPeriodDialog();
     return;
   }
 
   outputSettingKesn.value = parsedKesn;
   processingPeriodHandled.value = true;
 
-  if (processingPeriodResolver) {
-    processingPeriodResolver(true);
-    processingPeriodResolver = null;
-  }
-
-  showProcessingPeriodSelectDialog.value = false;
+  resolveProcessingPeriod(true);
+  closeProcessingPeriodDialog();
 }
 
 watch(showProcessingPeriodSelectDialog, (visible) => {
-  if (!visible && !processingPeriodHandled.value && processingPeriodResolver) {
-    processingPeriodResolver(false);
-    processingPeriodResolver = null;
+  if (!visible && !processingPeriodHandled.value) {
+    resolveProcessingPeriod(false);
   }
 });
 
-async function checkRirekiStatusAsync(): Promise<boolean> {
-  const kesnToCheck = getCurrentKesnFromLocal() ?? 0;
+/* =========================
+ * business flow helpers
+ * ========================= */
+async function fetchRirekiStatus(
+  kesn: number,
+): Promise<CheckRirekiStatusResponse> {
+  const response = await checkRirekiStatus(kesn);
+  return mapStatusResponse(response);
+}
+
+async function exitToMenu(): Promise<false> {
+  router.push("/");
+  return false;
+}
+
+async function showMasterUnavailableMessage(): Promise<false> {
+  await ShowMessageDialog(
+    "・電子帳簿保存を使用するマスター\n" +
+      "・内部統制機能強化モードマスター\n" +
+      "・履歴を保存するマスター(履歴処理)\n" +
+      "のいずれでもありません。\n" +
+      "業務を終了します。",
+    "科目履歴一覧",
+    MessageBoxIcon.Error,
+  );
+
+  return exitToMenu();
+}
+
+async function confirmChangePeriod(): Promise<boolean> {
+  return ShowConfirmDialog(
+    "当期は処理できません。\n処理期を変更しますか。",
+    "処理期変更",
+    MessageBoxIcon.Question,
+  );
+}
+
+async function confirmExitWhenNoPeriodSelected(): Promise<boolean> {
+  return ShowConfirmDialog(
+    "処理期が選択されていません。\n科目履歴一覧を終了しますか。",
+    "処理期変更",
+    MessageBoxIcon.Question,
+  );
+}
+
+async function confirmChangePeriodAgain(): Promise<boolean> {
+  return ShowConfirmDialog(
+    "指定処理期は処理できません。\n処理期を変更しますか。",
+    "処理期変更",
+    MessageBoxIcon.Question,
+  );
+}
+
+async function handlePeriodSelectionLoop(): Promise<boolean> {
+  while (true) {
+    const selected = await showF8Modal();
+
+    if (!selected) {
+      const shouldExit = await confirmExitWhenNoPeriodSelected();
+      if (shouldExit) return exitToMenu();
+      continue;
+    }
+
+    const selectedKesn = outputSettingKesn.value;
+    const selectedStatus = await fetchRirekiStatus(selectedKesn);
+
+    saveStatusToLocal(selectedStatus);
+
+    if (selectedStatus.currentSyorikiDensiTyouboHozonUsage === 0) {
+      const shouldRetry = await confirmChangePeriodAgain();
+
+      if (!shouldRetry) {
+        return exitToMenu();
+      }
+
+      continue;
+    }
+
+    saveCurrentKesn(selectedKesn);
+    return true;
+  }
+}
+
+async function ensureRirekiStatusReady(): Promise<boolean> {
+  const kesnToCheck = getStoredKesn();
 
   if (kesnToCheck === 0) {
-    router.push("/");
-    return false;
+    return exitToMenu();
   }
 
   try {
-    const response = await checkRirekiStatus(kesnToCheck);
-    const status = mapStatusResponse(response);
-
+    const status = await fetchRirekiStatus(kesnToCheck);
     saveStatusToLocal(status);
 
     if (status.rirekiType !== 0) {
       outputSettingKesn.value = kesnToCheck;
-      saveCurrentKesnToLocal();
+      saveCurrentKesn(kesnToCheck);
       return true;
     }
 
-    if (status.isCurrentKaisyaDensiTyouboHozonUsage === false) {
-      await ShowMessageDialog(
-        "・電子帳簿保存を使用するマスター\n" +
-          "・内部統制機能強化モードマスター\n" +
-          "・履歴を保存するマスター(履歴処理)\n" +
-          "のいずれでもありません。\n" +
-          "業務を終了します。",
-        "科目履歴一覧",
-        MessageBoxIcon.Error,
-      );
-
-      router.push("/");
-      return false;
+    if (!status.isCurrentKaisyaDensiTyouboHozonUsage) {
+      return showMasterUnavailableMessage();
     }
 
     if (status.currentSyorikiDensiTyouboHozonUsage === 0) {
-      const changePeriod = await ShowConfirmDialog(
-        "当期は処理できません。\n処理期を変更しますか。",
-        "処理期変更",
-        MessageBoxIcon.Question,
-      );
+      const shouldChange = await confirmChangePeriod();
 
-      if (!changePeriod) {
-        router.push("/");
-        return false;
+      if (!shouldChange) {
+        return exitToMenu();
       }
 
-      while (true) {
-        const selected = await showF8Modal();
-
-        if (!selected) {
-          const exit = await ShowConfirmDialog(
-            "処理期が選択されていません。\n科目履歴一覧を終了しますか。",
-            "処理期変更",
-            MessageBoxIcon.Question,
-          );
-
-          if (exit) {
-            router.push("/");
-            return false;
-          }
-
-          continue;
-        }
-
-        const kesnSelected = outputSettingKesn.value;
-        const responseAfterSelect = await checkRirekiStatus(kesnSelected);
-        const statusAfterSelect = mapStatusResponse(responseAfterSelect);
-
-        saveStatusToLocal(statusAfterSelect);
-
-        if (statusAfterSelect.currentSyorikiDensiTyouboHozonUsage === 0) {
-          const changeAgain = await ShowConfirmDialog(
-            "指定処理期は処理できません。\n処理期を変更しますか。",
-            "処理期変更",
-            MessageBoxIcon.Question,
-          );
-
-          if (!changeAgain) {
-            router.push("/");
-            return false;
-          }
-
-          continue;
-        }
-
-        saveCurrentKesnToLocal();
-        return true;
-      }
+      return handlePeriodSelectionLoop();
     }
 
     outputSettingKesn.value = kesnToCheck;
-    saveCurrentKesnToLocal();
+    saveCurrentKesn(kesnToCheck);
     return true;
   } catch (error) {
-    console.error("checkRirekiStatusAsync error:", error);
-    router.push("/");
-    return false;
+    console.error("ensureRirekiStatusReady error:", error);
+    return exitToMenu();
   }
 }
 
+/* =========================
+ * lifecycle
+ * ========================= */
 onMounted(async () => {
-  const ok = await checkRirekiStatusAsync();
-
+  const ok = await ensureRirekiStatusReady();
   if (!ok) return;
 
   showOutputSettingsDialog.value = true;
@@ -407,13 +564,13 @@ onMounted(async () => {
                     <tbody>
                       <tr
                         v-for="(item, idx) in leftRows"
-                        :key="`${item.internalCode}-${idx}`"
+                        :key="`${item.kicd}-${idx}`"
                         class="row-selectable"
                         :class="{ 'selected-row': selectedLeftIndex === idx }"
                         @click="selectLeftRow(idx)"
                       >
                         <td style="text-align: center">{{ item.del }}</td>
-                        <td>{{ item.internalCode }}</td>
+                        <td>{{ item.kicd }}</td>
                         <td>{{ item.code }}</td>
                         <td>{{ item.name }}</td>
                       </tr>
@@ -434,29 +591,33 @@ onMounted(async () => {
 
                       <tr v-if="rightStickyRow" class="right-sticky-row">
                         <th style="width: 120px; text-align: left">
-                          {{ rightStickyRow.changeDate }}
+                          {{ convertToReiwaFromNumber(rightStickyRow.lmod) }}
                         </th>
-                        <th style="width: 70px">{{ rightStickyRow.code }}</th>
+                        <th style="width: 70px">
+                          {{ rightStickyRow.kcod }}
+                        </th>
                         <th style="width: 150px; text-align: left">
-                          {{ rightStickyRow.screenName }}
+                          {{ rightStickyRow.knmx }}
                         </th>
                         <th style="width: 150px; text-align: left">
-                          {{ rightStickyRow.printName }}
+                          {{ rightStickyRow.knam }}
                         </th>
-                        <th style="width: 50px">{{ rightStickyRow.type }}</th>
+                        <th style="width: 50px">
+                          {{ rightStickyRow.case }}
+                        </th>
                       </tr>
                     </thead>
 
                     <tbody>
                       <tr
-                        v-for="(row, idx) in filteredRightRows"
-                        :key="`${row.leftCode}-${row.changeDate}-${idx}`"
+                        v-for="(row, index) in filteredRightRows"
+                        :key="`${row.kicd}-${index}`"
                       >
-                        <td>{{ row.changeDate }}</td>
-                        <td>{{ row.code }}</td>
-                        <td>{{ row.screenName }}</td>
-                        <td>{{ row.printName }}</td>
-                        <td>{{ row.type }}</td>
+                        <td>{{ convertToReiwaFromNumber(row.lmod) }}</td>
+                        <td>{{ row.kcod }}</td>
+                        <td>{{ row.knmx }}</td>
+                        <td>{{ row.knam }}</td>
+                        <td>{{ row.case }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -493,7 +654,7 @@ onMounted(async () => {
 
 <style scoped>
 .title-bar {
-  margin: 5px 0 5px;
+  margin: 10px 0 10px;
   text-align: center;
   font-size: 18px;
 }
@@ -649,7 +810,7 @@ onMounted(async () => {
 
 .table-right thead .right-sticky-row th {
   position: sticky;
-  top: 38px;
+  top: 43px;
   z-index: 25;
   background: #e5f3ff;
   padding: 10px 8px;
