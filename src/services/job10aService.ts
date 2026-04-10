@@ -173,3 +173,18 @@ export const getDetailHistory = async (payload: LatestKmrkiDisplayRequest) => {
 
   return response.data.data;
 };
+
+export type SyorikiListResponse = {
+  ccod: string;
+  kesn: number;
+  label: string;
+  syorikikanLabel: string;
+}[];
+
+export const getSyorikiList = async () => {
+  const response = await job10aClient.get<ApiResponse<SyorikiListResponse>>(
+    "/api/History/getSyorikiList",
+  );
+
+  return response.data.data;
+};

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, type Ref } from "vue";
 import { useRouter } from "vue-router";
 
 import AppFooter from "@/components/AppFooter.vue";
@@ -30,6 +30,9 @@ import { ShowMessageDialog } from "@/services/messageDialogService";
 import { toNumberOrNull } from "@/utils/number";
 import { convertToReiwaFromNumber } from "@/utils/date";
 
+/* =========================
+ * types
+ * ========================= */
 type CheckRirekiStatusResponse = {
   rirekiType: number;
   currentSyorikiDensiTyouboHozonUsage: number;
@@ -75,89 +78,111 @@ type HistoryLikeRow = {
   case: string;
 };
 
-const router = useRouter();
+type ProcessingPeriodPayload = {
+  kesn: string;
+  syorikikanLabel: string;
+};
 
 /* =========================
- * localStorage keys
+ * constants
  * ========================= */
+const router = useRouter();
+
 const STORAGE_KEYS = {
   currentKesn: "current_kesn",
   rirekiType: "rirekiType",
   currentSyoriki: "currentSyorikiDensiTyouboHozonUsage",
   currentKaisyaDenshi: "isCurrentKaisyaDensiTyouboHozonUsage",
+  periodLabel: "syorikikan_label",
+} as const;
+
+const SCREEN_TITLES = {
+  main: "科目履歴一覧",
+  outputSettings: "履歴出力設定",
+  periodChange: "処理期変更",
+} as const;
+
+const SCREEN_MESSAGES = {
+  noData: "出力対象となるデータはありません。",
+  requireDate: "指定日を入力してください。",
+  requireTargets: "検索対象を指定してください。",
+  outputSettingsNotSelected:
+    "履歴の出力設定が選択されていません。\n科目履歴一覧を終了しますか。",
+  masterUnavailable:
+    "・電子帳簿保存を使用するマスター\n" +
+    "・内部統制機能強化モードマスター\n" +
+    "・履歴を保存するマスター(履歴処理)\n" +
+    "のいずれでもありません。\n" +
+    "業務を終了します。",
+  confirmChangePeriod: "当期は処理できません。\n処理期を変更しますか。",
+  confirmNoPeriodSelected:
+    "処理期が選択されていません。\n科目履歴一覧を終了しますか。",
+  confirmChangePeriodAgain:
+    "指定処理期は処理できません。\n処理期を変更しますか。",
 } as const;
 
 /* =========================
- * states
+ * utils
  * ========================= */
-const currentRequest = ref<LatestKmrkiDisplayRequest | null>(null);
-
-const showPrintRangeDialog = ref(false);
-const showOutputSettingsDialog = ref(false);
-const showProcessingPeriodSelectDialog = ref(false);
-
-const message = ref("");
-const selectedLeftIndex = ref<number | null>(null);
-const outputSettingKesn = ref(0);
-
-const leftRows = ref<LeftRow[]>([]);
-const rightRows = ref<RightRow[]>([]);
-
-/* =========================
- * computed
- * ========================= */
-const rightStickyRow = computed<RightRow | null>(() => {
-  return rightRows.value[0] ?? null;
-});
-
-const filteredRightRows = computed<RightRow[]>(() => {
-  return rightRows.value.slice(1);
-});
-
-/* =========================
- * formatter / normalize
- * ========================= */
-function normalizeDateForApi(value: string | null | undefined): string {
-  if (!value) return "";
-  return value.replace(/\D/g, "");
+function normalizeDigits(value: string | null | undefined): string {
+  return value?.replace(/\D/g, "") ?? "";
 }
 
-function normalizeTimeForApi(value: string | null | undefined): string {
-  if (!value) return "";
-  return value.replace(/\D/g, "");
+function hasNoSearchTarget(payload: SaveOptionRequest): boolean {
+  return payload.add === 0 && payload.upd === 0 && payload.del === 0;
+}
+
+function extractResponseObject(response: unknown): Record<string, unknown> {
+  if (response && typeof response === "object" && "data" in response) {
+    const data = (response as { data?: unknown }).data;
+    return data && typeof data === "object"
+      ? (data as Record<string, unknown>)
+      : {};
+  }
+
+  return response && typeof response === "object"
+    ? (response as Record<string, unknown>)
+    : {};
 }
 
 /* =========================
- * localStorage helpers
+ * storage helpers
  * ========================= */
-function getStoredKesn(): number {
-  return toNumberOrNull(localStorage.getItem(STORAGE_KEYS.currentKesn)) ?? 0;
-}
+const storage = {
+  getKesn(): number {
+    return toNumberOrNull(localStorage.getItem(STORAGE_KEYS.currentKesn)) ?? 0;
+  },
 
-function saveCurrentKesn(kesn: number) {
-  localStorage.setItem(STORAGE_KEYS.currentKesn, String(kesn));
-}
+  setKesn(kesn: number) {
+    localStorage.setItem(STORAGE_KEYS.currentKesn, String(kesn));
+  },
 
-function saveStatusToLocal(status: CheckRirekiStatusResponse) {
-  localStorage.setItem(STORAGE_KEYS.rirekiType, String(status.rirekiType));
-  localStorage.setItem(
-    STORAGE_KEYS.currentSyoriki,
-    String(status.currentSyorikiDensiTyouboHozonUsage),
-  );
-  localStorage.setItem(
-    STORAGE_KEYS.currentKaisyaDenshi,
-    String(status.isCurrentKaisyaDensiTyouboHozonUsage),
-  );
-}
+  getPeriodLabel(): string {
+    return localStorage.getItem(STORAGE_KEYS.periodLabel) || "";
+  },
+
+  setPeriodLabel(label: string) {
+    localStorage.setItem(STORAGE_KEYS.periodLabel, label);
+  },
+
+  saveStatus(status: CheckRirekiStatusResponse) {
+    localStorage.setItem(STORAGE_KEYS.rirekiType, String(status.rirekiType));
+    localStorage.setItem(
+      STORAGE_KEYS.currentSyoriki,
+      String(status.currentSyorikiDensiTyouboHozonUsage),
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.currentKaisyaDenshi,
+      String(status.isCurrentKaisyaDensiTyouboHozonUsage),
+    );
+  },
+};
 
 /* =========================
- * mapping helpers
+ * mappers
  * ========================= */
 function mapStatusResponse(response: unknown): CheckRirekiStatusResponse {
-  const raw =
-    (response as { data?: Record<string, unknown> } | null)?.data ??
-    (response as Record<string, unknown> | null) ??
-    {};
+  const raw = extractResponseObject(response);
 
   return {
     rirekiType: Number(raw.rirekiType ?? 0),
@@ -195,33 +220,102 @@ function mapToRightRow(item: HistoryLikeRow): RightRow {
 }
 
 /* =========================
- * table loaders
+ * state
  * ========================= */
-async function loadLeftRows(request: LatestKmrkiDisplayRequest) {
-  const displayResult = await latestKmrkiDisplay(request);
-  leftRows.value = displayResult.map(mapToLeftRow);
-}
+const currentRequest = ref<LatestKmrkiDisplayRequest | null>(null);
 
-async function loadRightRows(kicd: string) {
-  const headerResponse = await getNames({
-    kesn: outputSettingKesn.value,
-    kicd: kicd,
-  });
+const showPrintRangeDialog = ref(false);
+const showOutputSettingsDialog = ref(false);
+const showProcessingPeriodSelectDialog = ref(false);
 
-  const headerRows = headerResponse.map(mapToRightRow);
+const screenReady = ref(false);
+const message = ref("");
+const periodText = ref(storage.getPeriodLabel());
 
-  if (!currentRequest.value) {
-    rightRows.value = headerRows;
-    return;
+const outputSettingKesn = ref(0);
+const selectedLeftIndex = ref<number | null>(null);
+
+const leftRows = ref<LeftRow[]>([]);
+const rightRows = ref<RightRow[]>([]);
+
+/* =========================
+ * computed
+ * ========================= */
+const rightStickyRow = computed<RightRow | null>(
+  () => rightRows.value[0] ?? null,
+);
+const filteredRightRows = computed<RightRow[]>(() => rightRows.value.slice(1));
+
+/* =========================
+ * dialog controller helper
+ * ========================= */
+function createBooleanDialogController(visible: Ref<boolean>) {
+  const handled = ref(false);
+  let resolver: ((value: boolean) => void) | null = null;
+
+  function open(): Promise<boolean> {
+    handled.value = false;
+    visible.value = true;
+
+    return new Promise<boolean>((resolve) => {
+      resolver = resolve;
+    });
   }
 
-  const detailResponse = await getDetailHistory({
-    ...currentRequest.value,
-    kicd: kicd,
-  });
+  function resolve(result: boolean) {
+    if (!resolver) return;
+    resolver(result);
+    resolver = null;
+  }
 
-  const detailRows = detailResponse.map(mapToRightRow);
-  rightRows.value = [...headerRows, ...detailRows];
+  function close() {
+    visible.value = false;
+  }
+
+  return {
+    handled,
+    open,
+    resolve,
+    close,
+  };
+}
+
+const outputSettingsDialog = createBooleanDialogController(
+  showOutputSettingsDialog,
+);
+const processingPeriodDialog = createBooleanDialogController(
+  showProcessingPeriodSelectDialog,
+);
+
+/* =========================
+ * loaders
+ * ========================= */
+async function fetchLeftRows(
+  request: LatestKmrkiDisplayRequest,
+): Promise<LeftRow[]> {
+  const rows = await latestKmrkiDisplay(request);
+  return rows.map(mapToLeftRow);
+}
+
+async function fetchRightRows(kicd: string): Promise<RightRow[]> {
+  const headerPromise = getNames({
+    kesn: outputSettingKesn.value,
+    kicd,
+  }).then((rows) => rows.map(mapToRightRow));
+
+  const detailPromise = currentRequest.value
+    ? getDetailHistory({
+        ...currentRequest.value,
+        kicd,
+      }).then((rows) => rows.map(mapToRightRow))
+    : Promise.resolve<RightRow[]>([]);
+
+  const [headerRows, detailRows] = await Promise.all([
+    headerPromise,
+    detailPromise,
+  ]);
+
+  return [...headerRows, ...detailRows];
 }
 
 async function selectLeftRow(index: number) {
@@ -232,14 +326,38 @@ async function selectLeftRow(index: number) {
   rightRows.value = [];
 
   try {
-    await loadRightRows(selected.kicd);
+    rightRows.value = await fetchRightRows(selected.kicd);
   } catch (error) {
     console.error("Load rightRows failed:", error);
   }
 }
 
+async function applyDisplayRequest(
+  request: LatestKmrkiDisplayRequest,
+  preferredKicd: string | null = null,
+) {
+  currentRequest.value = request;
+  selectedLeftIndex.value = null;
+  rightRows.value = [];
+
+  leftRows.value = await fetchLeftRows(request);
+
+  if (leftRows.value.length === 0) {
+    message.value = SCREEN_MESSAGES.noData;
+    return;
+  }
+
+  message.value = "";
+
+  const preferredIndex = preferredKicd
+    ? leftRows.value.findIndex((row) => row.kicd === preferredKicd)
+    : -1;
+
+  await selectLeftRow(preferredIndex >= 0 ? preferredIndex : 0);
+}
+
 /* =========================
- * dialog openers
+ * action / menu
  * ========================= */
 function openDialogByActionKey(actionKey: number) {
   switch (actionKey) {
@@ -262,132 +380,179 @@ function handleDialogAction(input: number | HeaderMenuPayload) {
   openDialogByActionKey(actionKey);
 }
 
-/* =========================
- * dialog callbacks
- * ========================= */
 function handlePrintRange() {
   console.log("Thực hiện in");
 }
 
+/* =========================
+ * F4 - output settings
+ * ========================= */
+const isInitialOutputSettingsFlow = ref(false);
+const isHandlingOutputSettingsCancel = ref(false);
+
+function showF4Modal(isInitial = false): Promise<boolean> {
+  isInitialOutputSettingsFlow.value = isInitial;
+  return outputSettingsDialog.open();
+}
+
+async function confirmExitFromOutputSettings(): Promise<boolean> {
+  return ShowConfirmDialog(
+    SCREEN_MESSAGES.outputSettingsNotSelected,
+    SCREEN_TITLES.main,
+    MessageBoxIcon.Question,
+  );
+}
+
+function buildDisplayRequest(
+  payload: SaveOptionRequest,
+  normalizedDate: string,
+  normalizedTime: string,
+): LatestKmrkiDisplayRequest {
+  return {
+    userCode: payload.userCode,
+    selectOption: payload.selectOption,
+    date: normalizedDate,
+    time: normalizedTime,
+    add: payload.add,
+    upd: payload.upd,
+    del: payload.del,
+    kesn: payload.kesn,
+    kicd: "",
+  };
+}
+
 async function handleOutputSettings(payload: SaveOptionRequest) {
   try {
-    const apiDate = normalizeDateForApi(payload.date);
-    const apiTime = normalizeTimeForApi(payload.time);
+    const normalizedDate = normalizeDigits(payload.date);
+    const normalizedTime = normalizeDigits(payload.time);
 
-    const request = {
+    if (!normalizedDate) {
+      await ShowMessageDialog(
+        SCREEN_MESSAGES.requireDate,
+        SCREEN_TITLES.outputSettings,
+        MessageBoxIcon.Warning,
+      );
+      return;
+    }
+
+    if (hasNoSearchTarget(payload)) {
+      await ShowMessageDialog(
+        SCREEN_MESSAGES.requireTargets,
+        SCREEN_TITLES.outputSettings,
+        MessageBoxIcon.Warning,
+      );
+      return;
+    }
+
+    await saveOption({
       userCode: payload.userCode,
       programId: payload.programId,
       selectOption: payload.selectOption,
-      date: apiDate,
-      time: apiTime,
+      date: normalizedDate,
+      time: normalizedTime,
       add: payload.add,
       upd: payload.upd,
       del: payload.del,
       kesn: payload.kesn,
-    };
+    });
 
-    if (apiDate === "") {
-      await ShowMessageDialog(
-        "指定日を入力してください。",
-        "履歴出力設定",
-        MessageBoxIcon.Warning,
-      );
-      return;
-    }
-
-    if (payload.add === 0 && payload.upd === 0 && payload.del === 0) {
-      await ShowMessageDialog(
-        "検索対象を指定してください。",
-        "履歴出力設定",
-        MessageBoxIcon.Warning,
-      );
-      return;
-    }
-
-    await saveOption(request);
-
-    const displayRequest: LatestKmrkiDisplayRequest = {
-      userCode: payload.userCode,
-      selectOption: payload.selectOption,
-      date: apiDate,
-      time: apiTime,
-      add: payload.add,
-      upd: payload.upd,
-      del: payload.del,
-      kesn: payload.kesn,
-      kicd: "",
-    };
-
-    currentRequest.value = displayRequest;
     outputSettingKesn.value = payload.kesn;
 
-    selectedLeftIndex.value = null;
-    rightRows.value = [];
+    await applyDisplayRequest(
+      buildDisplayRequest(payload, normalizedDate, normalizedTime),
+    );
 
-    await loadLeftRows(displayRequest);
+    outputSettingsDialog.handled.value = true;
+    isInitialOutputSettingsFlow.value = false;
 
-    if (leftRows.value.length === 0) {
-      message.value = "出力対象となるデータはありません。";
-    } else {
-      message.value = "";
-      await selectLeftRow(0);
-    }
-
-    showOutputSettingsDialog.value = false;
+    outputSettingsDialog.resolve(true);
+    outputSettingsDialog.close();
   } catch (error) {
     console.error("Save output settings failed:", error);
   }
 }
-/* =========================
- * F8 processing period dialog
- * ========================= */
-let processingPeriodResolver: ((value: boolean) => void) | null = null;
-const processingPeriodHandled = ref(false);
 
-function resolveProcessingPeriod(result: boolean) {
-  if (!processingPeriodResolver) return;
+async function handleOutputSettingsCancel() {
+  if (isHandlingOutputSettingsCancel.value) return;
 
-  processingPeriodResolver(result);
-  processingPeriodResolver = null;
-}
+  isHandlingOutputSettingsCancel.value = true;
 
-function closeProcessingPeriodDialog() {
-  showProcessingPeriodSelectDialog.value = false;
-}
+  try {
+    outputSettingsDialog.handled.value = true;
+    outputSettingsDialog.close();
 
-function showF8Modal(): Promise<boolean> {
-  processingPeriodHandled.value = false;
-  showProcessingPeriodSelectDialog.value = true;
+    if (!isInitialOutputSettingsFlow.value) {
+      return;
+    }
 
-  return new Promise<boolean>((resolve) => {
-    processingPeriodResolver = resolve;
-  });
-}
+    const shouldExit = await confirmExitFromOutputSettings();
 
-function handleProcessingPeriod(kesn: string) {
-  const parsedKesn = toNumberOrNull(kesn);
+    if (shouldExit) {
+      isInitialOutputSettingsFlow.value = false;
+      outputSettingsDialog.resolve(false);
+      await router.push("/");
+      return;
+    }
 
-  if (parsedKesn === null) {
-    resolveProcessingPeriod(false);
-    closeProcessingPeriodDialog();
-    return;
+    outputSettingsDialog.handled.value = false;
+    showOutputSettingsDialog.value = true;
+  } finally {
+    isHandlingOutputSettingsCancel.value = false;
   }
-
-  outputSettingKesn.value = parsedKesn;
-  processingPeriodHandled.value = true;
-
-  resolveProcessingPeriod(true);
-  closeProcessingPeriodDialog();
 }
 
-watch(showProcessingPeriodSelectDialog, (visible) => {
-  if (!visible && !processingPeriodHandled.value) {
-    resolveProcessingPeriod(false);
+watch(showOutputSettingsDialog, (visible) => {
+  if (!visible && !outputSettingsDialog.handled.value) {
+    void handleOutputSettingsCancel();
   }
 });
 
 /* =========================
- * business flow helpers
+ * F8 - processing period
+ * ========================= */
+function showF8Modal(): Promise<boolean> {
+  return processingPeriodDialog.open();
+}
+
+async function handleProcessingPeriod(payload: ProcessingPeriodPayload) {
+  const parsedKesn = toNumberOrNull(payload.kesn);
+
+  if (parsedKesn === null) {
+    processingPeriodDialog.resolve(false);
+    processingPeriodDialog.close();
+    return;
+  }
+
+  processingPeriodDialog.handled.value = true;
+  processingPeriodDialog.close();
+
+  try {
+    await reloadScreenByKesn(parsedKesn);
+
+    periodText.value = payload.syorikikanLabel;
+    storage.setPeriodLabel(payload.syorikikanLabel);
+
+    processingPeriodDialog.resolve(true);
+  } catch (error) {
+    console.error("Reload by kesn failed:", error);
+    processingPeriodDialog.resolve(false);
+  }
+}
+
+function handleProcessingPeriodCancel() {
+  processingPeriodDialog.handled.value = true;
+  processingPeriodDialog.resolve(false);
+  processingPeriodDialog.close();
+}
+
+watch(showProcessingPeriodSelectDialog, (visible) => {
+  if (!visible && !processingPeriodDialog.handled.value) {
+    processingPeriodDialog.resolve(false);
+  }
+});
+
+/* =========================
+ * business flow
  * ========================= */
 async function fetchRirekiStatus(
   kesn: number,
@@ -397,18 +562,14 @@ async function fetchRirekiStatus(
 }
 
 async function exitToMenu(): Promise<false> {
-  router.push("/");
+  await router.push("/");
   return false;
 }
 
 async function showMasterUnavailableMessage(): Promise<false> {
   await ShowMessageDialog(
-    "・電子帳簿保存を使用するマスター\n" +
-      "・内部統制機能強化モードマスター\n" +
-      "・履歴を保存するマスター(履歴処理)\n" +
-      "のいずれでもありません。\n" +
-      "業務を終了します。",
-    "科目履歴一覧",
+    SCREEN_MESSAGES.masterUnavailable,
+    SCREEN_TITLES.main,
     MessageBoxIcon.Error,
   );
 
@@ -417,26 +578,51 @@ async function showMasterUnavailableMessage(): Promise<false> {
 
 async function confirmChangePeriod(): Promise<boolean> {
   return ShowConfirmDialog(
-    "当期は処理できません。\n処理期を変更しますか。",
-    "処理期変更",
+    SCREEN_MESSAGES.confirmChangePeriod,
+    SCREEN_TITLES.periodChange,
     MessageBoxIcon.Question,
   );
 }
 
 async function confirmExitWhenNoPeriodSelected(): Promise<boolean> {
   return ShowConfirmDialog(
-    "処理期が選択されていません。\n科目履歴一覧を終了しますか。",
-    "処理期変更",
+    SCREEN_MESSAGES.confirmNoPeriodSelected,
+    SCREEN_TITLES.periodChange,
     MessageBoxIcon.Question,
   );
 }
 
 async function confirmChangePeriodAgain(): Promise<boolean> {
   return ShowConfirmDialog(
-    "指定処理期は処理できません。\n処理期を変更しますか。",
-    "処理期変更",
+    SCREEN_MESSAGES.confirmChangePeriodAgain,
+    SCREEN_TITLES.periodChange,
     MessageBoxIcon.Question,
   );
+}
+
+async function reloadScreenByKesn(kesn: number) {
+  const status = await fetchRirekiStatus(kesn);
+  storage.saveStatus(status);
+
+  outputSettingKesn.value = kesn;
+  storage.setKesn(kesn);
+
+  if (!currentRequest.value) {
+    return;
+  }
+
+  const preferredKicd =
+    selectedLeftIndex.value !== null
+      ? (leftRows.value[selectedLeftIndex.value]?.kicd ?? null)
+      : null;
+
+  const nextRequest: LatestKmrkiDisplayRequest = {
+    ...currentRequest.value,
+    kesn,
+    kicd: "",
+  };
+
+  await applyDisplayRequest(nextRequest, preferredKicd);
 }
 
 async function handlePeriodSelectionLoop(): Promise<boolean> {
@@ -451,8 +637,7 @@ async function handlePeriodSelectionLoop(): Promise<boolean> {
 
     const selectedKesn = outputSettingKesn.value;
     const selectedStatus = await fetchRirekiStatus(selectedKesn);
-
-    saveStatusToLocal(selectedStatus);
+    storage.saveStatus(selectedStatus);
 
     if (selectedStatus.currentSyorikiDensiTyouboHozonUsage === 0) {
       const shouldRetry = await confirmChangePeriodAgain();
@@ -464,13 +649,13 @@ async function handlePeriodSelectionLoop(): Promise<boolean> {
       continue;
     }
 
-    saveCurrentKesn(selectedKesn);
+    storage.setKesn(selectedKesn);
     return true;
   }
 }
 
 async function ensureRirekiStatusReady(): Promise<boolean> {
-  const kesnToCheck = getStoredKesn();
+  const kesnToCheck = storage.getKesn();
 
   if (kesnToCheck === 0) {
     return exitToMenu();
@@ -478,11 +663,11 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
 
   try {
     const status = await fetchRirekiStatus(kesnToCheck);
-    saveStatusToLocal(status);
+    storage.saveStatus(status);
 
     if (status.rirekiType !== 0) {
       outputSettingKesn.value = kesnToCheck;
-      saveCurrentKesn(kesnToCheck);
+      storage.setKesn(kesnToCheck);
       return true;
     }
 
@@ -501,7 +686,7 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
     }
 
     outputSettingKesn.value = kesnToCheck;
-    saveCurrentKesn(kesnToCheck);
+    storage.setKesn(kesnToCheck);
     return true;
   } catch (error) {
     console.error("ensureRirekiStatusReady error:", error);
@@ -513,10 +698,13 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
  * lifecycle
  * ========================= */
 onMounted(async () => {
-  const ok = await ensureRirekiStatusReady();
-  if (!ok) return;
+  const isReady = await ensureRirekiStatusReady();
+  if (!isReady) return;
 
-  showOutputSettingsDialog.value = true;
+  const isF4Completed = await showF4Modal(true);
+  if (!isF4Completed) return;
+
+  screenReady.value = true;
 });
 </script>
 
@@ -528,7 +716,7 @@ onMounted(async () => {
       <AppHeader
         userName="User 0001"
         title="科目履歴一覧"
-        periodText="当期：自 2026年 1月 1日 至 2026年12月31日"
+        :periodText="periodText"
         screenCode="KNMRI-1"
         :menus="headerMenusJob10a"
         :showHelp="true"
@@ -536,7 +724,7 @@ onMounted(async () => {
         @menu-click="handleDialogAction"
       />
 
-      <main class="page-container">
+      <main v-if="screenReady" class="page-container">
         <div class="main-container">
           <div class="title-bar">
             <div
@@ -636,14 +824,17 @@ onMounted(async () => {
       <OutputSettingsDialog
         v-model:visible="showOutputSettingsDialog"
         @confirm="handleOutputSettings"
+        @cancel="handleOutputSettingsCancel"
       />
 
       <ProcessingPeriodDialog
         v-model:visible="showProcessingPeriodSelectDialog"
         @confirm="handleProcessingPeriod"
+        @cancel="handleProcessingPeriodCancel"
       />
 
       <AppFooter
+        v-if="screenReady"
         :buttons="footerJob10a"
         :enabled-keys="[2, 4, 8]"
         @key-click="handleDialogAction"

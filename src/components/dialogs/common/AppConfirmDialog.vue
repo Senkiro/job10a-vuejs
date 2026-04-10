@@ -51,9 +51,9 @@ function handleHide() {
     position="top"
     @hide="handleHide"
   >
-    <div class="confirm-body">
+    <div class="confirm-body" v-focustrap>
       <i v-if="iconClass" :class="iconClass" class="confirm-icon" />
-      <div class="confirm-message">
+      <div class="confirm-message" autofocus>
         {{ confirmDialogState.message }}
       </div>
     </div>

@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 import Select from "primevue/select";
+
 import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter.vue";
-import { ref, watch } from "vue";
+import { getSyorikiList } from "@/services/job10aService";
 
 type PeriodItem = {
   kesn: string;
   label: string;
+  syorikikanLabel: string;
 };
 
 const props = defineProps<{
@@ -15,23 +18,48 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:visible", value: boolean): void;
-  (e: "confirm", kesn: string): void;
+  (e: "confirm", payload: { kesn: string; syorikikanLabel: string }): void;
   (e: "cancel"): void;
 }>();
 
-const periods = ref<PeriodItem[]>([
-  { kesn: "202601", label: "2026年01月" },
-  { kesn: "202602", label: "2026年02月" },
-  { kesn: "202603", label: "2026年03月" },
-]);
-
+const periods = ref<PeriodItem[]>([]);
 const selectedKesn = ref("");
+const loading = ref(false);
+
+async function loadData() {
+  loading.value = true;
+
+  try {
+    const data = await getSyorikiList();
+
+    periods.value = data.map((item) => ({
+      kesn: String(item.kesn),
+      label: item.label,
+      syorikikanLabel: item.syorikikanLabel,
+    }));
+
+    const exists = periods.value.some((x) => x.kesn === selectedKesn.value);
+    localStorage.setItem(
+      "syorikikan_label",
+      periods.value[0]?.syorikikanLabel ?? "",
+    );
+    if (!exists) {
+      selectedKesn.value = periods.value[0]?.kesn ?? "";
+    }
+  } catch (error) {
+    console.error("Failed to load syoriki list:", error);
+    periods.value = [];
+    selectedKesn.value = "";
+  } finally {
+    loading.value = false;
+  }
+}
 
 watch(
   () => props.visible,
-  (val) => {
-    if (val) {
-      selectedKesn.value = periods.value[0]?.kesn ?? "";
+  async (visible) => {
+    if (visible) {
+      await loadData();
     }
   },
   { immediate: true },
@@ -43,7 +71,14 @@ function closeDialog() {
 }
 
 function confirmDialog() {
-  emit("confirm", selectedKesn.value);
+  const selected = periods.value.find((x) => x.kesn === selectedKesn.value);
+  if (!selected) return;
+
+  emit("confirm", {
+    kesn: selected.kesn,
+    syorikikanLabel: selected.syorikikanLabel,
+  });
+
   emit("update:visible", false);
 }
 </script>
@@ -68,6 +103,9 @@ function confirmDialog() {
             :options="periods"
             optionLabel="label"
             optionValue="kesn"
+            placeholder="処理期を選択してください"
+            class="w-full"
+            appendTo="body"
             autofocus
           />
         </div>
@@ -76,9 +114,8 @@ function confirmDialog() {
 
     <template #footer>
       <DialogDefaultFooter
-        ok-label="OK"
-        cancel-label="キャンセル"
-        @ok="confirmDialog"
+        :ok-disabled="loading || !selectedKesn"
+        @confirm="confirmDialog"
         @cancel="closeDialog"
       />
     </template>

@@ -36,9 +36,9 @@ const iconClass = computed(() => {
     :header="messageDialogState.title"
     position="top"
   >
-    <div class="message-body">
+    <div class="message-body" v-focustrap>
       <i v-if="iconClass" :class="iconClass" class="message-icon" />
-      <div class="message-text">
+      <div class="message-text" autofocus>
         {{ messageDialogState.message }}
       </div>
     </div>
