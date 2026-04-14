@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 import DialogDefaultFooter from "../../common/DialogDefaultFooter.vue";
 import InputText from "primevue/inputtext";
+import {
+  getKamokuList,
+  type KamokuListResponse,
+} from "@/services/job10aService";
+import { toNumberOrNull } from "@/utils/number";
 
 type GetKamokuDto = {
-  kicd?: string | null;
-  kcod?: string | null;
-  kana?: string | null;
-  shortName?: string | null;
-  longName?: string | null;
+  kicd: string | null;
+  kcod: string | null;
+  kana: string | null;
+  shortName: string | null;
+  longName: string | null;
 };
 
 type ActiveTitle = "Kata" | "NumberChoose" | "Name";
 
 const props = defineProps<{
   visible: boolean;
-  items?: GetKamokuDto[];
 }>();
 
 const emit = defineEmits<{
@@ -57,6 +61,7 @@ const model = ref<GetKamokuDto>({
 const scrollContainerRef = ref<HTMLElement | null>(null);
 const suppressIndexScroll = ref(false);
 const sourceItems = ref<GetKamokuDto[]>([]);
+const loading = ref(false);
 
 function setActive(item: ActiveTitle) {
   activeTitle.value = item;
@@ -83,6 +88,16 @@ function resetModel() {
     shortName: null,
     longName: null,
   };
+}
+
+function resetDialogState() {
+  modalTabActive.value = "内部";
+  activeTitle.value = "Kata";
+  searchKana.value = "";
+  searchName.value = "";
+  selectedIndex.value = "";
+  selectedRow.value = null;
+  resetModel();
 }
 
 function resetSelectionOnFilterChange() {
@@ -379,9 +394,7 @@ const filteredItems = computed<GetKamokuDto[]>(() => {
       default:
         break;
     }
-  } else if (
-    filters2.includes(modalTabActive.value as (typeof filters2)[number])
-  ) {
+  } else {
     query.sort((a, b) => {
       const hiraA = toHiraganaForSort(a.kana);
       const hiraB = toHiraganaForSort(b.kana);
@@ -483,29 +496,47 @@ async function scrollToRowByIndex(input?: string) {
   rowEl?.scrollIntoView({ block: "nearest" });
 }
 
-watch(
-  () => props.items,
-  (val) => {
-    sourceItems.value = [...(val ?? [])];
+function getKesn() {
+  return toNumberOrNull(localStorage.getItem("current_kesn")) ?? 0;
+}
+
+function mapKamokuItem(item: KamokuListResponse): GetKamokuDto {
+  return {
+    kicd: item.kicd ?? null,
+    kcod: item.kcod ?? null,
+    kana: item.kana ?? null,
+    shortName: item.shortName ?? null,
+    longName: item.longName ?? null,
+  };
+}
+
+async function loadData() {
+  loading.value = true;
+
+  try {
+    const kesn = getKesn();
+    const data = await getKamokuList(kesn);
+
+    sourceItems.value = data.map(mapKamokuItem);
+
+    await nextTick();
     initializeSelection();
-  },
-  { immediate: true },
-);
+  } catch (error) {
+    console.error("Failed to load kamoku list:", error);
+    sourceItems.value = [];
+    resetModel();
+  } finally {     
+    loading.value = false;
+  }
+}
 
 watch(
   () => props.visible,
   async (val) => {
     if (!val) return;
 
-    modalTabActive.value = "内部";
-    searchKana.value = "";
-    searchName.value = "";
-    selectedIndex.value = "";
-    selectedRow.value = null;
-    activeTitle.value = "Kata";
-
-    await nextTick();
-    initializeSelection();
+    resetDialogState();
+    await loadData();
   },
 );
 
@@ -522,10 +553,6 @@ watch(searchKana, () => {
 watch(searchName, () => {
   resetIndexToFirstBeforeSearch();
   applyDefaultSelection();
-});
-
-onMounted(() => {
-  initializeSelection();
 });
 </script>
 
@@ -636,7 +663,7 @@ onMounted(() => {
                 <th>科目コード</th>
                 <th>コード</th>
                 <th>カナ</th>
-                <th>科目名称</th>
+                <th>科目名称</th> 
               </tr>
             </thead>
             <tbody>

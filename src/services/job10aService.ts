@@ -1,7 +1,7 @@
 import { job10aClient } from "@/api/job10aClient";
 import type { ApiResponse } from "@/services/api";
 
-export type CheckRirekiStatusResponseDto = {
+export type CheckRirekiStatusResponse = {
   rirekiType: number;
   currentSyorikiDensiTyouboHozonUsage: number;
   isCurrentKaisyaDensiTyouboHozonUsage: boolean;
@@ -9,7 +9,7 @@ export type CheckRirekiStatusResponseDto = {
 
 export const checkRirekiStatus = async (kesn: number) => {
   const response = await job10aClient.get<
-    ApiResponse<CheckRirekiStatusResponseDto>
+    ApiResponse<CheckRirekiStatusResponse>
   >("/api/History/checkRirekiStatus", {
     params: {
       Kesn: kesn,
@@ -24,7 +24,7 @@ export type GetOptionRequest = {
   programId: string;
 };
 
-export type GetOptionResponseDto = {
+export type GetOptionResponse = {
   userCode: number;
   selectOption: number;
   date: number;
@@ -35,7 +35,7 @@ export type GetOptionResponseDto = {
 };
 
 export const getOption = async (payload: GetOptionRequest) => {
-  const response = await job10aClient.get<ApiResponse<GetOptionResponseDto>>(
+  const response = await job10aClient.get<ApiResponse<GetOptionResponse>>(
     "/api/RiOpt/getOption",
     {
       params: {
@@ -48,7 +48,7 @@ export const getOption = async (payload: GetOptionRequest) => {
   return response.data.data;
 };
 
-export type GetUprkiResponseDto = {
+export type GetUprkiResponse = {
   no: number;
   processDateTime: string;
   processType: string;
@@ -58,7 +58,7 @@ export type GetUprkiResponseDto = {
   rtim: number;
 };
 export const getUprki = async (kesn: number) => {
-  const response = await job10aClient.get<ApiResponse<GetUprkiResponseDto[]>>(
+  const response = await job10aClient.get<ApiResponse<GetUprkiResponse[]>>(
     "/api/RiOpt/getUprki",
     {
       params: {
@@ -187,4 +187,64 @@ export const getSyorikiList = async () => {
   );
 
   return response.data.data;
+};
+
+export type KamokuListResponse = {
+  kicd: string;
+  kcod: string;
+  kana: string;
+  shortName: string;
+  longName: string;
+};
+
+export const getKamokuList = async (kesn: number) => {
+  const response = await job10aClient.get<ApiResponse<KamokuListResponse[]>>(
+    "/api/History/getKamokuList",
+    {
+      params: {
+        kesn: kesn,
+      },
+    },
+  );
+
+  return response.data.data;
+};
+
+export type PrintOption = {
+  programId: string;
+  isPrintKaisyaLabelTitle: boolean;
+  isPrintKaisyaCode: boolean;
+  isPrintDate: boolean;
+  isPrintTime: boolean;
+  isPrintSeiriMonth: boolean;
+  isPrintPageRange: boolean;
+  pageFrom: number;
+  pageTo: number;
+};
+
+export type RioptSetting = {
+  userCode: number;
+  selectOption: number;
+  date: number;
+  time: number;
+  add: number;
+  update: number;
+  del: number;
+};
+
+export type HistoryPrintRequest = {
+  kesn: number;
+  startKamokuCode: string;
+  endKamokuCode: string;
+  syorikiId: number;
+  printOption: PrintOption;
+  rioptSetting: RioptSetting;
+};
+
+export const printHistory = async (payload: HistoryPrintRequest) => {
+  const response = await job10aClient.post("/api/History/print", payload, {
+    responseType: "blob",
+  });
+
+  return response.data;
 };

@@ -30,3 +30,31 @@ export function openPdfAndPrintFromBase64(base64Pdf: string) {
     }
   }, 60000);
 }
+
+export function openPdfAndPrintFromBlob(blob: Blob) {
+  const blobUrl = URL.createObjectURL(blob);
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.src = blobUrl;
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (error) {
+      console.error("Error occurred while printing PDF:", error);
+    } finally {
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        iframe.remove();
+      }, 60000);
+    }
+  };
+
+  document.body.appendChild(iframe);
+}

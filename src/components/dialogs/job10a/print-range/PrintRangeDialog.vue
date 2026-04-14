@@ -6,7 +6,11 @@ import { ref, watch } from "vue";
 import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter.vue";
 import SeqSearchDialog from "@/components/dialogs/job10a/seq-search/SeqSearchDialog.vue";
 import PrintSettingsDialog from "../print-settings/PrintSettingsDialog.vue";
-import { openPdfAndPrintFromBase64 } from "@/utils/printPdf";
+import { openPdfAndPrintFromBlob } from "@/utils/printPdf";
+import {
+  printHistory,
+  type HistoryPrintRequest,
+} from "@/services/job10aService";
 
 const props = defineProps<{
   visible: boolean;
@@ -71,36 +75,51 @@ function handleSubmit(row: any) {
   console.log("selected:", row);
 }
 
-const showPrintSettingsDialog = ref(false);
-
 async function handlePrintSettingsConfirm(printSettings: any) {
-  console.log("print settings:", printSettings);
-
-  const payload = {
-    from: fromValue.value,
-    to: toValue.value,
-    printSettings,
-  };
-
   try {
-    // call api
-    const base64Pdf = "";
+    const payload: HistoryPrintRequest = {
+      kesn: 13,
+      startKamokuCode: fromValue.value || "0000000000000000",
+      endKamokuCode: toValue.value || "0000000000000000",
+      syorikiId: 0,
+      printOption: {
+        programId: "KNMRI",
+        isPrintKaisyaLabelTitle: printSettings.outputTitle,
+        isPrintKaisyaCode: printSettings.outputCode,
+        isPrintDate: printSettings.outputDate,
+        isPrintTime: printSettings.outputTime,
+        isPrintSeiriMonth: printSettings.outputPeriod,
+        isPrintPageRange: printSettings.outputPageRange,
+        pageFrom: printSettings.pageFrom,
+        pageTo: printSettings.pageTo,
+      },
+      rioptSetting: {
+        userCode: 1,
+        selectOption: 1,
+        date: Number(
+          `${printSettings.year}${String(printSettings.month).padStart(2, "0")}${String(printSettings.day).padStart(2, "0")}`,
+        ),
+        time: 133510,
+        add: 1,
+        update: 1,
+        del: 1,
+      },
+    };
 
-    if (!base64Pdf) {
+    const fileBlob = await printHistory(payload);
+
+    if (!(fileBlob instanceof Blob) || fileBlob.size === 0) {
       console.error("Không có dữ liệu PDF để in");
       return;
     }
 
-    openPdfAndPrintFromBase64(base64Pdf);
-
-    emit("confirm", {
-      from: fromValue.value,
-      to: toValue.value,
-    });
+    openPdfAndPrintFromBlob(fileBlob);
   } catch (error) {
     console.error("Lỗi khi in PDF:", error);
   }
 }
+
+const showPrintSettingsDialog = ref(false);
 </script>
 
 <template>
@@ -141,7 +160,7 @@ async function handlePrintSettingsConfirm(printSettings: any) {
           <Button
             label="履歴検索"
             class="action-btn primary-btn"
-            @click="handleHistorySearch"
+            @click="seqSearchVisible = true"
           />
         </div>
 

@@ -6,7 +6,7 @@ import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter
 import {
   getOption,
   getUprki,
-  type GetUprkiResponseDto,
+  type GetUprkiResponse,
   type SaveOptionRequest,
 } from "@/services/job10aService";
 import { toNumberOrNull } from "@/utils/number";
@@ -76,7 +76,7 @@ const getKesn = () =>
   toNumberOrNull(localStorage.getItem(STORAGE_KEYS.KESN)) ?? 0;
 
 /* ========================= MAPPERS ========================= */
-const mapRow = (item: GetUprkiResponseDto): HistoryRow => ({
+const mapRow = (item: GetUprkiResponse): HistoryRow => ({
   id: item.no,
   processDateTime: item.processDateTime,
   processType: item.processType,

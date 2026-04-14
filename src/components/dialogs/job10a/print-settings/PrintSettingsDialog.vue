@@ -28,6 +28,26 @@ type PrintItem =
 type HintType = "CreatedDate" | "PageRange" | "Setup" | null;
 type PaperSize = "A3" | "A4" | "B4" | "B5";
 
+type PrintSettings = {
+  outputTitle: boolean;
+  outputCode: boolean;
+  outputDate: boolean;
+  outputTime: boolean;
+  outputPeriod: boolean;
+  outputPageRange: boolean;
+  outputOri: boolean;
+  year: number;
+  month: number;
+  day: number;
+  pageFrom: number;
+  pageTo: number;
+  printer: string;
+  paperTray: string;
+  copies: number;
+  enablePrinterSetting: boolean;
+  selectedSize: PaperSize;
+};
+
 const activeTitle = ref<PrintItem>("Title");
 const activeHint = ref<HintType>(null);
 
@@ -58,9 +78,7 @@ const printerOptions = ["Microsoft Print to PDF", "Adobe PDF", "Canon LBP2900"];
 watch(
   () => props.visible,
   (val) => {
-    if (!val) {
-      activeHint.value = null;
-    }
+    if (!val) activeHint.value = null;
   },
 );
 
@@ -88,7 +106,7 @@ function closeDialog() {
 }
 
 function handleOk() {
-  emit("confirm", {
+  const printSettings: PrintSettings = {
     outputTitle: outputTitle.value,
     outputCode: outputCode.value,
     outputDate: outputDate.value,
@@ -96,7 +114,6 @@ function handleOk() {
     outputPeriod: outputPeriod.value,
     outputPageRange: outputPageRange.value,
     outputOri: outputOri.value,
-    selectedSize: selectedSize.value,
     year: year.value,
     month: month.value,
     day: day.value,
@@ -106,9 +123,11 @@ function handleOk() {
     paperTray: paperTray.value,
     copies: copies.value,
     enablePrinterSetting: enablePrinterSetting.value,
-  });
+    selectedSize: selectedSize.value,
+  };
 
-  emit("update:visible", false);
+  emit("confirm", printSettings);
+  closeDialog();
 }
 
 const hintText = computed(() => {
