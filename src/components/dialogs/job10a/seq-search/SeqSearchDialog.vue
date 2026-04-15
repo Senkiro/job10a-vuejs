@@ -262,11 +262,13 @@ function getGojuonRowKeyNoNormalizeForm(kana?: string | null) {
 
   let c = firstChar;
 
+  // katakana -> hiragana
   if (c >= "\u30A1" && c <= "\u30F6") {
     c = String.fromCharCode(c.charCodeAt(0) - 0x60);
   }
 
   const convertMap: Record<string, string> = {
+    // dakuten / handakuten
     が: "か",
     ぎ: "か",
     ぐ: "か",
@@ -292,6 +294,18 @@ function getGojuonRowKeyNoNormalizeForm(kana?: string | null) {
     ぷ: "は",
     ぺ: "は",
     ぽ: "は",
+
+    // small kana: chỉ áp cho ký tự đầu tiên
+    ぁ: "あ",
+    ぃ: "い",
+    ぅ: "う",
+    ぇ: "え",
+    ぉ: "お",
+    ゃ: "や",
+    ゅ: "ゆ",
+    ょ: "よ",
+    っ: "つ",
+    ゎ: "わ",
   };
 
   c = convertMap[c] ?? c;
@@ -355,6 +369,20 @@ function getRowOrderIndex(hiraHead?: string) {
   return 99;
 }
 
+function compareKanaDisplayOrder(a?: string | null, b?: string | null) {
+  const aa = (a ?? "").trim();
+  const bb = (b ?? "").trim();
+
+  if (aa < bb) return -1;
+  if (aa > bb) return 1;
+  return 0;
+}
+
+function getKanaGroupOrder(kana?: string | null) {
+  const rowKey = getGojuonRowKeyNoNormalizeForm(kana);
+  return getRowOrderIndex(rowKey);
+}
+
 const filteredItems = computed<GetKamokuDto[]>(() => {
   let query = [...sourceItems.value];
 
@@ -383,31 +411,36 @@ const filteredItems = computed<GetKamokuDto[]>(() => {
       case "入力":
         query.sort((a, b) => (a.kcod ?? "").localeCompare(b.kcod ?? ""));
         break;
+
       case "内部":
         query.sort((a, b) => (a.kicd ?? "").localeCompare(b.kicd ?? ""));
         break;
+
       case "カナ":
-        query.sort((a, b) =>
-          toHiraganaForSort(a.kana).localeCompare(toHiraganaForSort(b.kana)),
-        );
+        query.sort((a, b) => {
+          const orderA = getKanaGroupOrder(a.kana);
+          const orderB = getKanaGroupOrder(b.kana);
+
+          if (orderA !== orderB) return orderA - orderB;
+
+          const cmp = compareKanaDisplayOrder(a.kana, b.kana);
+          if (cmp !== 0) return cmp;
+
+          return (a.kicd ?? "").localeCompare(b.kicd ?? "");
+        });
         break;
+
       default:
         break;
     }
   } else {
     query.sort((a, b) => {
-      const hiraA = toHiraganaForSort(a.kana);
-      const hiraB = toHiraganaForSort(b.kana);
-
-      const firstA = hiraA[0];
-      const firstB = hiraB[0];
-
-      const orderA = firstA ? getRowOrderIndex(firstA) : 99;
-      const orderB = firstB ? getRowOrderIndex(firstB) : 99;
+      const orderA = getKanaGroupOrder(a.kana);
+      const orderB = getKanaGroupOrder(b.kana);
 
       if (orderA !== orderB) return orderA - orderB;
 
-      const cmp = hiraA.localeCompare(hiraB);
+      const cmp = compareKanaDisplayOrder(a.kana, b.kana);
       if (cmp !== 0) return cmp;
 
       return (a.kicd ?? "").localeCompare(b.kicd ?? "");
@@ -493,7 +526,11 @@ async function scrollToRowByIndex(input?: string) {
   await nextTick();
 
   const rowEl = document.getElementById(getRowId(idx));
-  rowEl?.scrollIntoView({ block: "nearest" });
+  rowEl?.scrollIntoView({
+    block: "center",
+    inline: "nearest",
+    behavior: "smooth",
+  });
 }
 
 function getKesn() {
@@ -525,7 +562,7 @@ async function loadData() {
     console.error("Failed to load kamoku list:", error);
     sourceItems.value = [];
     resetModel();
-  } finally {     
+  } finally {
     loading.value = false;
   }
 }
@@ -663,7 +700,7 @@ watch(searchName, () => {
                 <th>科目コード</th>
                 <th>コード</th>
                 <th>カナ</th>
-                <th>科目名称</th> 
+                <th>科目名称</th>
               </tr>
             </thead>
             <tbody>
