@@ -8,6 +8,8 @@ import {
   type KamokuListResponse,
 } from "@/services/job10aService";
 import { toNumberOrNull } from "@/utils/number";
+import { storeToRefs } from "pinia";
+import { useJob10aStore } from "@/stores/job10aStore";
 
 type GetKamokuDto = {
   kicd: string | null;
@@ -22,6 +24,8 @@ type ActiveTitle = "Kata" | "NumberChoose" | "Name";
 const props = defineProps<{
   visible: boolean;
 }>();
+const job10aStore = useJob10aStore();
+const { workingKesn } = storeToRefs(job10aStore);
 
 const emit = defineEmits<{
   (e: "update:visible", value: boolean): void;
@@ -533,8 +537,8 @@ async function scrollToRowByIndex(input?: string) {
   });
 }
 
-function getKesn() {
-  return toNumberOrNull(localStorage.getItem("current_kesn")) ?? 0;
+function getKesn(): number {
+  return toNumberOrNull(workingKesn.value) ?? 0;
 }
 
 function mapKamokuItem(item: KamokuListResponse): GetKamokuDto {

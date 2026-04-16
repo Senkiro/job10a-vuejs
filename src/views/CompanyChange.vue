@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "primevue/usetoast";
 
 import Toast from "primevue/toast";

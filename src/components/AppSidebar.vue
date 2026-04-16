@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from "vue-router";
 import logoSias from "@/assets/images/logo-sias.png";
+import { useAuthStore } from "@/stores/authStore";
 
 type MenuItem = {
   label: string;
@@ -38,7 +39,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const companyCode = localStorage.getItem("company_id") ?? "Change Comapny";
+const companyCode = useAuthStore().companyId ?? "Change Comapny";
 
 const isActive = (path: string) => route.path === path;
 

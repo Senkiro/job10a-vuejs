@@ -1,15 +1,14 @@
 import { job10aClient } from "./job10aClient";
-
-const TOKEN_KEY = "access_token";
+import { useAuthStore } from "@/stores/authStore";
 
 export function setupInterceptors() {
   job10aClient.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem(TOKEN_KEY);
+      const authStore = useAuthStore();
 
-      if (token) {
+      if (authStore.token) {
         config.headers = config.headers ?? {};
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${authStore.token}`;
       }
 
       return config;

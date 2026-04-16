@@ -6,6 +6,10 @@ import AppFooter from "@/components/AppFooter.vue";
 import AppHeader from "@/components/AppHeader.vue";
 import AppSidebar from "@/components/AppSidebar.vue";
 
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/stores/authStore";
+import { useJob10aStore } from "@/stores/job10aStore";
+
 import PrintRangeDialog from "@/components/dialogs/job10a/print-range/PrintRangeDialog.vue";
 import OutputSettingsDialog from "@/components/dialogs/job10a/output-settings/OutputSettingsDialog.vue";
 import ProcessingPeriodDialog from "@/components/dialogs/job10a/processing-period/ProcessingPeriodDialog.vue";
@@ -88,13 +92,20 @@ type ProcessingPeriodPayload = {
  * ========================= */
 const router = useRouter();
 
-const STORAGE_KEYS = {
-  currentKesn: "current_kesn",
-  rirekiType: "rirekiType",
-  currentSyoriki: "currentSyorikiDensiTyouboHozonUsage",
-  currentKaisyaDenshi: "isCurrentKaisyaDensiTyouboHozonUsage",
-  periodLabel: "syorikikan_label",
-} as const;
+const authStore = useAuthStore();
+const job10aStore = useJob10aStore();
+
+const { currentKesn, currentSyorikikan } = storeToRefs(authStore);
+const { workingKesn, periodLabel } = storeToRefs(job10aStore);
+
+function initScreenStoreFromAuth() {
+  if (job10aStore.initialized) return;
+
+  job10aStore.initFromAuth({
+    kesn: currentKesn.value,
+    periodLabel: currentSyorikikan.value,
+  });
+}
 
 const SCREEN_TITLES = {
   main: "科目履歴一覧",
@@ -104,6 +115,7 @@ const SCREEN_TITLES = {
 
 const SCREEN_MESSAGES = {
   noData: "出力対象となるデータはありません。",
+  noDataPrint: "印刷データがありません。",
   requireDate: "指定日を入力してください。",
   requireTargets: "検索対象を指定してください。",
   outputSettingsNotSelected:
@@ -148,35 +160,17 @@ function extractResponseObject(response: unknown): Record<string, unknown> {
 /* =========================
  * storage helpers
  * ========================= */
-const storage = {
-  getKesn(): number {
-    return toNumberOrNull(localStorage.getItem(STORAGE_KEYS.currentKesn)) ?? 0;
-  },
+function getKesnFromStore(): number {
+  return toNumberOrNull(workingKesn.value) ?? 0;
+}
 
-  setKesn(kesn: number) {
-    localStorage.setItem(STORAGE_KEYS.currentKesn, String(kesn));
-  },
+function setKesnToStore(kesn: number) {
+  job10aStore.workingKesn = String(kesn);
+}
 
-  getPeriodLabel(): string {
-    return localStorage.getItem(STORAGE_KEYS.periodLabel) || "";
-  },
-
-  setPeriodLabel(label: string) {
-    localStorage.setItem(STORAGE_KEYS.periodLabel, label);
-  },
-
-  saveStatus(status: CheckRirekiStatusResponse) {
-    localStorage.setItem(STORAGE_KEYS.rirekiType, String(status.rirekiType));
-    localStorage.setItem(
-      STORAGE_KEYS.currentSyoriki,
-      String(status.currentSyorikiDensiTyouboHozonUsage),
-    );
-    localStorage.setItem(
-      STORAGE_KEYS.currentKaisyaDenshi,
-      String(status.isCurrentKaisyaDensiTyouboHozonUsage),
-    );
-  },
-};
+function saveStatusToStore(status: CheckRirekiStatusResponse) {
+  job10aStore.saveStatus(status);
+}
 
 /* =========================
  * mappers
@@ -230,7 +224,7 @@ const showProcessingPeriodSelectDialog = ref(false);
 
 const screenReady = ref(false);
 const message = ref("");
-const periodText = ref(storage.getPeriodLabel());
+const periodText = computed(() => periodLabel.value);
 
 const outputSettingKesn = ref(0);
 const selectedLeftIndex = ref<number | null>(null);
@@ -362,6 +356,14 @@ async function applyDisplayRequest(
 function openDialogByActionKey(actionKey: number) {
   switch (actionKey) {
     case 2:
+      if (leftRows.value.length === 0) {
+        ShowMessageDialog(
+          SCREEN_MESSAGES.noDataPrint,
+          SCREEN_TITLES.main,
+          MessageBoxIcon.Warning,
+        );
+        return;
+      }
       showPrintRangeDialog.value = true;
       break;
     case 4:
@@ -528,10 +530,7 @@ async function handleProcessingPeriod(payload: ProcessingPeriodPayload) {
 
   try {
     await reloadScreenByKesn(parsedKesn);
-
-    periodText.value = payload.syorikikanLabel;
-    storage.setPeriodLabel(payload.syorikikanLabel);
-
+    job10aStore.setProcessingPeriod(payload.kesn, payload.syorikikanLabel);
     processingPeriodDialog.resolve(true);
   } catch (error) {
     console.error("Reload by kesn failed:", error);
@@ -602,10 +601,10 @@ async function confirmChangePeriodAgain(): Promise<boolean> {
 
 async function reloadScreenByKesn(kesn: number) {
   const status = await fetchRirekiStatus(kesn);
-  storage.saveStatus(status);
+  saveStatusToStore(status);
 
   outputSettingKesn.value = kesn;
-  storage.setKesn(kesn);
+  setKesnToStore(kesn);
 
   if (!currentRequest.value) {
     return;
@@ -637,7 +636,7 @@ async function handlePeriodSelectionLoop(): Promise<boolean> {
 
     const selectedKesn = outputSettingKesn.value;
     const selectedStatus = await fetchRirekiStatus(selectedKesn);
-    storage.saveStatus(selectedStatus);
+    saveStatusToStore(selectedStatus);
 
     if (selectedStatus.currentSyorikiDensiTyouboHozonUsage === 0) {
       const shouldRetry = await confirmChangePeriodAgain();
@@ -649,13 +648,13 @@ async function handlePeriodSelectionLoop(): Promise<boolean> {
       continue;
     }
 
-    storage.setKesn(selectedKesn);
+    setKesnToStore(selectedKesn);
     return true;
   }
 }
 
 async function ensureRirekiStatusReady(): Promise<boolean> {
-  const kesnToCheck = storage.getKesn();
+  const kesnToCheck = getKesnFromStore();
 
   if (kesnToCheck === 0) {
     return exitToMenu();
@@ -663,11 +662,11 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
 
   try {
     const status = await fetchRirekiStatus(kesnToCheck);
-    storage.saveStatus(status);
+    saveStatusToStore(status);
 
     if (status.rirekiType !== 0) {
       outputSettingKesn.value = kesnToCheck;
-      storage.setKesn(kesnToCheck);
+      setKesnToStore(kesnToCheck);
       return true;
     }
 
@@ -686,7 +685,7 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
     }
 
     outputSettingKesn.value = kesnToCheck;
-    storage.setKesn(kesnToCheck);
+    setKesnToStore(kesnToCheck);
     return true;
   } catch (error) {
     console.error("ensureRirekiStatusReady error:", error);
@@ -698,6 +697,8 @@ async function ensureRirekiStatusReady(): Promise<boolean> {
  * lifecycle
  * ========================= */
 onMounted(async () => {
+  initScreenStoreFromAuth();
+
   const isReady = await ensureRirekiStatusReady();
   if (!isReady) return;
 

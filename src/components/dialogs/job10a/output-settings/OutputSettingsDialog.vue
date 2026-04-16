@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import Dialog from "primevue/dialog";
 
 import DialogDefaultFooter from "@/components/dialogs/common/DialogDefaultFooter.vue";
@@ -11,11 +11,16 @@ import {
 } from "@/services/job10aService";
 import { toNumberOrNull } from "@/utils/number";
 
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/stores/authStore";
+import { useJob10aStore } from "@/stores/job10aStore";
+
 /* ========================= CONSTANTS ========================= */
-const STORAGE_KEYS = {
-  KESN: "current_kesn",
-  USER: "user_code",
-};
+const authStore = useAuthStore();
+const job10aStore = useJob10aStore();
+
+const { userCode } = storeToRefs(authStore);
+const { workingKesn } = storeToRefs(job10aStore);
 
 const PROGRAM_ID = "KNMRI";
 
@@ -70,10 +75,9 @@ const selectedRow = computed(() =>
 );
 
 /* ========================= STORAGE ========================= */
-const getUserCode = () => localStorage.getItem(STORAGE_KEYS.USER) ?? "";
+const getUserCode = () => userCode.value ?? "";
 
-const getKesn = () =>
-  toNumberOrNull(localStorage.getItem(STORAGE_KEYS.KESN)) ?? 0;
+const getKesn = () => toNumberOrNull(workingKesn.value) ?? 0;
 
 /* ========================= MAPPERS ========================= */
 const mapRow = (item: GetUprkiResponse): HistoryRow => ({
@@ -183,14 +187,50 @@ function onRowClicked(idx: number) {
   timeText.value = formatTimeFromInt(row.rtim);
 }
 
-function onDateInput(e: Event) {
+function getCaretFromDigitIndex(formatted: string, digitIndex: number) {
+  let digitCount = 0;
+
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted.charAt(i))) {
+      digitCount++;
+    }
+    if (digitCount >= digitIndex) {
+      return i + 1;
+    }
+  }
+
+  return formatted.length;
+}
+async function onDateInput(e: Event) {
   const input = e.target as HTMLInputElement;
-  dateText.value = formatDateTyping(input.value);
+  const rawValue = input.value;
+  const caret = input.selectionStart ?? rawValue.length;
+
+  const digitsBeforeCaret = rawValue.slice(0, caret).replace(/\D/g, "").length;
+  const formatted = formatDateTyping(rawValue);
+
+  dateText.value = formatted;
+
+  await nextTick();
+
+  const newCaret = getCaretFromDigitIndex(formatted, digitsBeforeCaret);
+  input.setSelectionRange(newCaret, newCaret);
 }
 
-function onTimeInput(e: Event) {
+async function onTimeInput(e: Event) {
   const input = e.target as HTMLInputElement;
-  timeText.value = formatTimeTyping(input.value);
+  const rawValue = input.value;
+  const caret = input.selectionStart ?? rawValue.length;
+
+  const digitsBeforeCaret = rawValue.slice(0, caret).replace(/\D/g, "").length;
+  const formatted = formatTimeTyping(rawValue);
+
+  timeText.value = formatted;
+
+  await nextTick();
+
+  const newCaret = getCaretFromDigitIndex(formatted, digitsBeforeCaret);
+  input.setSelectionRange(newCaret, newCaret);
 }
 
 function onDateClicked() {
@@ -341,7 +381,7 @@ watch(
           <div class="input-date">
             <div class="section-title-input">
               <input
-                v-model="dateText"
+                :value="dateText"
                 type="text"
                 class="input-inside"
                 :disabled="isAllMode"
@@ -355,7 +395,7 @@ watch(
 
             <div class="section-title-input">
               <input
-                v-model="timeText"
+                :value="timeText"
                 type="text"
                 class="input-inside"
                 :disabled="isAllMode"

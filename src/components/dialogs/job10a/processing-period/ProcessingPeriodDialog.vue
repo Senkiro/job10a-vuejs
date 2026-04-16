@@ -39,10 +39,7 @@ async function loadData() {
     }));
 
     const exists = periods.value.some((x) => x.kesn === selectedKesn.value);
-    localStorage.setItem(
-      "syorikikan_label",
-      periods.value[0]?.syorikikanLabel ?? "",
-    );
+
     if (!exists) {
       selectedKesn.value = periods.value[0]?.kesn ?? "";
     }
