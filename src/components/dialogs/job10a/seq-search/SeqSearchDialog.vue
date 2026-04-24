@@ -536,7 +536,7 @@ async function scrollToRowByIndex(input?: string) {
     behavior: "smooth",
   });
 }
-
+      
 function getKesn(): number {
   return toNumberOrNull(workingKesn.value) ?? 0;
 }
@@ -625,7 +625,7 @@ watch(searchName, () => {
 
           <div>
             <input
-              v-for="filter in filters2"
+              v-for="filter in filters2"  
               :key="filter"
               type="button"
               :value="filter"
